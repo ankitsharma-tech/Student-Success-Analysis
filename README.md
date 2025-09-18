@@ -5,7 +5,7 @@
 ## 📖 Project Overview
 
 The main goal of this project was to create a comprehensive report explaining concepts of **statistical data analysis** applied to an existing dataset.
-
+ 
 - The choice of statistical methods was flexible, as long as they were relevant and covered in the course curriculum.
 - The report included test cases, either from the recommended list provided by faculty or created by team members.
 - **R language** was used for data analysis and report generation.
