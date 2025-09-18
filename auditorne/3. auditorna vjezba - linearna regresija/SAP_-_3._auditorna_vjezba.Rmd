@@ -1,0 +1,389 @@
+---
+title: "SAP - Treća auditorna vježba"
+subtitle: "Case study *bike sharing data*: Linarna regresija"
+author: "Stjepan Begušić, David Bojanić, Andro Merćep, Tessa Bauman, Tomislav Kovačević"
+date: "15.12.2021."
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Linearna regresija
+
+Linearna regresija korisna je u raznim istraživačkim i praktičnim situacijama, a daje odgovore na nekoliko bitnih pitanja:
+
+- Postoji li veza između ulazne varijable (ili više ulaznih varijabli) - regresora, i izlazne varijable (reakcije)?
+- Koliko je jaka ta veza?
+- Koje ulazne varijable najviše utječu na izlaznu varijablu i koliko je jak taj efekt?
+- Možemo li predvidjeti izlaz za neke nove vrijednosti ulaznih varijabli i s kojom točnošću?
+
+### Model linearne regresije i estimacija parametara 
+
+Model linearne regresije pretpostavlja linearnu vezu između ulaznih i izlaznih varijabli:
+$$Y = \beta_0 + \sum_{j = 1}^{p}\beta_jx_j + \epsilon$$
+Pretpostavke modela: 
+
+- linearnost veze $X$ i $Y$
+- pogreške nezavisne, homogene i normalno distribuirane s $\epsilon \sim \mathcal{N}(0,\sigma^2)$
+
+Iz podataka je moguće dobiti procjenu modela:
+$$\hat{Y} = b_0 + \sum_{j = 1}^{p}b_jx_j + e,$$
+odnosno:
+$$\hat{\mathbf{y}} = \mathbf{X} \mathbf{b} + \mathbf{e}$$
+u matričnom zapisu.
+
+Procjena je zasnovana na metodi najmanjih kvadrata, tj. minimizaciji tzv. "sum of squared errors":
+$$SSE = \sum_{i = 1}^{N}(y_i - \hat{y}_i)^2 = (\mathbf{y}-\mathbf{X}\mathbf{b})^T(\mathbf{y}-\mathbf{X}\mathbf{b})$$
+Derivacijom se dobije:
+$$\mathbf{b} = (\mathbf{X}^T\mathbf{X})^{-1}\mathbf{X}^T\mathbf{y}$$
+Da bi se ova jednadžba mogla riješiti potrebno je invertirati matricu $\mathbf{X}^T\mathbf{X} \in \mathrm{R}^{p\times p}$ (složenost $O(n^3)$), uz pretpostavku da je matrica \textbf{punog ranga}.
+
+Estimacija parametara linearne regresije u R-u, kao i statistički testovi vezani uz parametre i estimirani model dostupni su u funkciji `lm` u paketu `stats`. 
+
+## Bike sharing data
+
+Podatci za analizu su dani u datoteci `bike.sharing`, te sadrže informacije o vremenskim prilikama i broju bicikla koje je određena bike-sharing agencija iznajmila taj dan. Skup podataka dostupan je na: https://archive.ics.uci.edu/ml/datasets/Bike+Sharing+Dataset - a tamo se nalazi i popis varijabli.
+
+```{r data}
+bike.sharing.data = read.table('bikesharing.csv',header = T,sep = ",")
+summary(bike.sharing.data)
+bike.sharing.data$dteday <- as.Date(bike.sharing.data$dteday,format("%Y-%m-%d")) # datetime formatting
+```
+
+Kako bi znali predvidjeti potrebu za biciklima, možemo ispitati različite varijable koje bi mogle utjecati na broj iznajmljenih bicikala:
+
+- Prosječna temperatura
+- Vlažnost
+- Brzina vjetra
+
+Kad promatramo utjecaj samo jedne nezavisne varijable X na neku zavisnu varijablu Y, grafički je moguće dobiti jako dobar dojam o njihovom odnosu - tu je najčešće od pomoći scatter plot.
+
+```{r scatter plots}
+
+plot(bike.sharing.data$temp,bike.sharing.data$cnt) #prosjecna temp vs broj iznajmljenih
+
+plot(bike.sharing.data$atemp,bike.sharing.data$cnt) #prosjecni dojam temp vs broj iznajmljenih
+
+plot(bike.sharing.data$hum,bike.sharing.data$cnt) #prosjecna vlaznost vs broj iznajmljenih
+
+plot(bike.sharing.data$windspeed,bike.sharing.data$cnt) #prosjecna brzina vjetra vs broj iznajmljenih
+
+```
+
+Očito je da temperatura (i prosječna dnevna temperatura i dojam temperature) ima izražen (i to pozitivan) utjecaj na izlaznu varijablu. S druge strane - vlažnost i brzina vjetra izgledaju kao puno slabiji kandidati za modeliranje broja iznajmljenih bicikala (uz neke naznake negativnog utjecaja).
+
+Kako bi ispitali pojedinačni utjecaj ovih varijabli, procijenit ćemo model jednostavne regresije - po jedan za svaku nezavisnu varijablu (uz cnt - broj iznajmljenih bicikala - kao zavisnu varijablu). 
+
+Regresijski model procjenjuje se funkcijom lm() koja kao parametre prima zavisne i nezavisne varijable, odnosno data.frame sa svim varijablama i definiciju varijabli u modelu.
+
+```{r jednostavna regresija}
+
+fit.temp = lm(cnt~temp,data=bike.sharing.data) #linearni model broja iznajmljenih bicikla (cnt) i temperature tog dana (temp)
+
+fit.atemp = lm(cnt~atemp,data=bike.sharing.data) #linearni model broja iznajmljenih bicikla (cnt) i temperature tog dana (temp)
+
+fit.hum = lm(cnt~hum,data=bike.sharing.data) #linearni model broja iznajmljenih bicikla (cnt) i temperature tog dana (temp)
+
+fit.windspeed = lm(cnt~windspeed,data=bike.sharing.data) #linearni model broja iznajmljenih bicikla (cnt) i temperature tog dana (temp)
+
+
+plot(bike.sharing.data$temp,bike.sharing.data$cnt) #graficki prikaz podataka
+lines(bike.sharing.data$temp,fit.temp$fitted.values,col='red') #graficki prikaz procijenjenih vrijednosti iz modela
+
+plot(bike.sharing.data$atemp,bike.sharing.data$cnt) #graficki prikaz podataka
+lines(bike.sharing.data$atemp,fit.atemp$fitted.values,col='red') #graficki prikaz procijenjenih vrijednosti iz modela
+
+plot(bike.sharing.data$windspeed,bike.sharing.data$cnt) #graficki prikaz podataka
+lines(bike.sharing.data$windspeed,fit.windspeed$fitted.values,col='red') #graficki prikaz procijenjenih vrijednosti iz modela
+
+plot(bike.sharing.data$hum,bike.sharing.data$cnt) #graficki prikaz podataka
+lines(bike.sharing.data$hum,fit.hum$fitted.values,col='red') #graficki prikaz procijenjenih vrijednosti iz modela
+
+```
+
+Nagibi pravaca linearne regresije potvrđuju tvrdnje o efektima pojedinih razmatranih varijabli na izlaznu varijablu. Kako bi se dobiveni modeli analizirali i usporedili, prvo je potrebno provjeriti da pretpostavke modela nisu (jako) narušene. Pritom su najbitnije pretpostavke o regresorima (u multivarijatnoj regresiji regresori ne smiju biti međusobno jako korelirani) i o rezidualima (normalnost reziduala i homogenost varijance).
+
+
+### Normalnost reziduala i homogenost varijance
+Normalnost reziduala moguće je provjeriti grafički, pomoću kvantil-kvantil plota (usporedbom s linijom normalne razdiobe), te statistički pomoću Kolmogorov-Smirnovljevog testa.
+
+```{r res}
+
+selected.model = fit.temp
+
+plot(selected.model$residuals) #gledajuci reziduale na ovaj nacin tesko je suditi o normalnosti
+
+#histogram je vrlo interpretativan
+hist((selected.model$residuals))
+hist(rstandard(selected.model))
+
+#q-q plot reziduala s linijom normalne distribucije
+qqnorm(rstandard(selected.model))
+qqline(rstandard(selected.model))
+
+plot(selected.model$fitted.values,selected.model$residuals) #reziduale je dobro prikazati u ovisnosti o procjenama modela
+
+plot(bike.sharing.data$dteday,selected.model$residuals) #a ponekad i u ovisnosti o nekim drugim varijablama koje je mozda tesko modelirati kao nezavisne varijable s linearnim efektom na izlaz - u ovom slucaju datum
+
+#KS test na normalnost 
+ks.test(rstandard(fit.windspeed),'pnorm')
+
+require(nortest)
+lillie.test(rstandard(fit.windspeed))
+
+```
+
+- Grafički prikaz reziduala samo po indeksu po kojem su dani u podatcima rijetko kad može dati potpunu sliku o njihovoj prirodi - doduše, u ovom slučaju su podatci poredani kronološki, pa taj grafički prikaz odgovara i onom po datumima - koji svjedoči o određenoj vremenskoj zavisnosti podataka.
+
+- Histogram je vrlo lako čitljiv i interpretativan način prikazivanja ovakvih varijabli, te se lako može zaključiti nešto o općenitom obliku distribucije reziduala - u ovom slučaju, ta distribucija donekle nalikuje normalnoj (što otprilike pokazuje i q-q plot), te nije previše zakrivljena.
+
+- Također je jako bitno da u ovisnosti o predviđanjima modela sami reziduali ne pokazuju heterogenost varijance (ne "šire" se s povećanjem $\hat{y}$). No, u ovisnosti o datumu postoji određena dinamika reziduala (ne "izgledaju" potpuno slučajno) koju model ne objašnjava. Takve vremenske zavisnosti se najčešće modeliraju tzv. autoregresivnim modelima (ARMA, ARIMA, ARIMAX, itd.) koji nisu predmet ovog kolegija. 
+
+- Statistički testovi se razlikuju u rezultatima (iako se preporuča korištenje Lillieforsove korekcije, u praksi se još uvijek često koristi i K-S test a i druge inačice). No, budući da reziduali ne pokazuju preveliko odstupanje od normalnosti (u smislu zakrivljenosti ili drugih razlika u distribuciji) te je poznato da je t-test robustan na (ne)normalnost - u analizi podataka se u ovakvim slučajevima i dalje mogu donositi statistički zaključci iz regresijskih modela.
+
+
+## Ocjena kvalitete modela i statističko zaključivanje o procijenjenom modelu
+Ako pretpostavke modela nisu (neprihvatljivo) prekršene, moguće je primijeniti različite statističke testove o procijenjenim koeficijentima i modelu. 
+
+#### t-test koeficijenata modela
+Budući da vrijedi $B_i\sim N(\mu_{B_i},\sigma_{B_i})$, $\mu_{B_i} = \beta_i$, statistika 
+$$T = \frac{B_i - \beta_i}{SE(B_i)}$$
+ima $t$-distribuciju s $n-k-1$ stupnjeva slobode, gdje je $k$ broj parametara. Većina programskih paketa, pa tako i R, pri estimiranju koeficijenata linearne regresije automatski testira $\beta_i = 0$. One koeficijente za koje možemo odbaciti $H_0: \beta_i = 0$ u korist $H_1: \beta_i \neq 0$ zovemo \textbf{značajni koeficijenti}.
+
+### Mjere kvalitete prilagodbe modela podatcima
+
+#### SSE
+Mjera koju minimiziramo estimiranjem parametara modela ("fitanjem na podatke") je SSE:
+$$SSE = \sum_{i = 1}^{N}(y_i - \hat{y}_i)^2$$
+
+#### $\mathbf{R^2}$
+Vrlo česta mjera kvalitete prilagodbe modela je koeficijent deteminacije, definiran kao:
+$$R^2 = 1 - \frac{SSE}{SST},$$
+gdje je: $SST = \sum_{i = 1}^{N}(y_i - \bar{y}_i)^2$ tzv. "total corrected sum of squares". Koeficijent determinacije $R^2$ je za linearne modele po definiciji $R^2 \in [0,1]$ i opisuje koji postotak varijance u izlaznoj varijabli $Y$ je estimirani linearni model objasnio/opisao.
+
+#### Adjusted $\mathbf{R^2}$
+Prilagođeni koeficijent determinacije penalizira dodatne parametre u modelu:
+$$R_{adj}^2 = 1 - \frac{SSE/(n-k-1)}{SST/(n-1)}.$$
+
+### F-test
+Za ispitivanje signifikantnosti čitavog modela koristi se F-statistika:
+$$ f = \frac{SSR/k}{SSE/(n-k-1)}, $$
+gdje je $SSR = \sum_{i=1}^n(\hat{y}_i-\bar{y})^2$.
+
+Sve navedene mjere se mogu vidjeti pozivanjem summary() funkcije nad objektom koji vraća lm(). 
+
+```{r analiza procijenjenih modela}
+
+summary(fit.temp)
+
+summary(fit.atemp)
+
+summary(fit.hum)
+
+summary(fit.windspeed)
+
+```
+
+Kao što je bilo vidljivo iz inicijalnih grafičkioh prikaza, temperatura kao varijabla ima vrlo jak efekt na broj iznajmljenih bicikla i objašnjava najveći postotak varijance (što se očituje u najvećim vrijednostima $R^2$). Također, iako nisu svi modeli jednako kvalitetni, u svim slučajevima su koeficijenti uz zavisnu varijablu značajni, te F-testovi upućuju na to i da su svi modeli značajni (objašnjavaju značajno više varijance od nul modela). Očito čak i varijable hum i windspeed nisu suvišne u modeliranju broja iznajmljenih bicikala, iako je možda njihova vrijednost nešto manja od temp ili atemp.
+
+## Korelacijski koeficijent i veza s linearnim modelom
+Korelacijski koeficijent je vrlo često korišten koncept zasnovan na linearnoj regresiji, te opisuje smjer i prirodu veze dviju varijabli. Pearsonov korelacijski koeficijent definiran je kao:
+
+$$r = \frac{S_{xy}}{\sqrt{S_{xx}S_{yy}}},$$
+
+gdje je $S_{xx} = \sum(x_i-\bar{x})^2$,$S_{yy} = \sum(y_i-\bar{y})^2$, a $S_{xy} = \sum(x_i-\bar{x})(y_i-\bar{y})$.
+
+
+Korelacijski koeficijent direktno je određen linearnom regresijom i koeficijentom determinacije $R^2$ i iznosi $r = \sqrt{R^2}$. 
+
+
+```{r korelacijski koeficijent}
+
+cor(bike.sharing.data$hum,bike.sharing.data$cnt)
+
+cor.test(bike.sharing.data$hum,bike.sharing.data$cnt)
+
+summary(fit.hum)
+
+```
+
+
+## Višestruka regresija
+
+Prije procjene modela višestruke regresije potrebno je provjeriti da pojedini parovi varijabli nisu (previše) korelirani. U principu je određena korelacija između varijabli neizbježna, ali varijable s vrlo visokom korelacijom će uzrokovati probleme u interpretaciji regresijskih rezultata.
+
+```{r avisestruka regresija s koreliranim varijablama}
+
+fit.temps = lm(cnt ~ atemp + temp, bike.sharing.data) #regresija s jako koreliranim varijablama
+summary(fit.temps)
+
+cor(bike.sharing.data$temp,bike.sharing.data$atemp)
+
+```
+
+Regresija s jako koreliranim ulaznim varijablama će uglavnom dati neke rezultate, ali na temelju njih ne možemo donositi nikakve zaključke. U slučaju savršene linearne zavisnosti ili koreliranosti ulaznih varijabli, procjena regresijskog modela će biti nestabilna i barem jedan koeficijent će biti NA.
+
+Stoga je potrebo odabrati onaj podskup varijabli za koje smatramo da objašnjavaju različite efekte u podatcima i nisu međusobno (previše) korelirane. 
+
+```{r cor}
+
+cor(cbind(bike.sharing.data$temp,bike.sharing.data$atemp,bike.sharing.data$hum,bike.sharing.data$windspeed)) # korelacijski koeficijenti parova regresora
+
+```
+
+```{r visestruka regresija}
+fit.multi = lm(cnt ~ atemp + hum + windspeed, bike.sharing.data)
+summary(fit.multi)
+
+
+```
+
+```{r residuali - visestruka regresija}
+plot(selected.model$fitted.values,selected.model$residuals) #reziduali u ovisnosti o procjenama modela
+
+plot(bike.sharing.data$dteday,selected.model$residuals) #reziduali u ovisnosti o datumu
+
+#KS test na normalnost 
+ks.test(rstandard(fit.windspeed),'pnorm')
+
+#Lillieforsov test na normalnost
+require(nortest)
+lillie.test(rstandard(fit.windspeed))
+
+```
+
+Zašto su sad varijable hum i windspeed toliko "značajnije" nego kad ih koristimo same? Često se dogodi i obrnut slučaj - uključivanjem dodatnih varijabli pojedine varijable mogu "prestati" biti značajne. U višestrukoj regresiji interakcije (korelacije) varijabli međusobno i sa zavisnom varijablom dolaze do izražaja - moguće su različite interpretacije. Može se tvrditi da je uključivanje varijable temp dodatno "očistilo" reziduale modela u kojem bi se koristio samo hum ili windspeed i time je dio varijance koji objašnjavaju ove dvije varijable došao do izražaja. U slučaju da su temp i hum ili windspeed objašnjavali iste efekte u podatcima, očekivali bismo da će uključivanje temp uzrokovati da hum ili windspeed "prestanu" biti značajni. 
+
+Ove interakcije su uzrok različitih fenomena u statistici, a jedan od poznatijih je i Simpsonov paradoks (https://en.wikipedia.org/wiki/Simpson%27s_paradox).
+
+Model višestruke regresije koji smo ovako dobili objašnjava cca. $46\%$ varijance u podatcima - generalno je teško govoriti koliki je $R^2$ "dovoljan" za kakve podatke budući da to upravo najviše ovisi o samom području primjene - za razne društvene i ekonomske studije (bilo što vezano uz ljudsko ponašanje) će već $30\%$ biti zadovoljavajući rezultat, dok za neke fizikalne procese ni $80\%$ nije dovoljno dobar model. U konkretnom slučaju, budući da se ipak radi o nečem vezanom uz ljudsko ponašanje, ovaj rezultat se čini dobar, ali kao što se vidi u analizi reziduala (grafički prikaz u odnosu na izlaz modela i u odnosu na datum) - postoje još neki efekti u podatcima koji ovaj model ne uspjeva objasniti.
+
+
+## Kategorijske nezavisne varijable
+
+U skupu podataka raspolažemo s nekim kategorijskim varijablama, npr. season (godišnje doba), mnth (mjesec), holiday (indikator radi li se o prazniku taj dan), weekday (dan u tjednu), weathersit (vremenska situacija). Kategorijske varijable se mogu uključiti kao regresori u analizu, ali je prethodno potrebno provjeriti nekoliko stvari:
+
+- radi li se o varijabli na nominalnoj ili ordinalnoj skali,
+- ima li varijabla linearan efekt na izlaznu varijablu,
+- predstavlja li određena kategorijska varijabla nešto što je određenom metričkom varijablom već predstavljeno.
+
+U konkretnom slučaju, varijabla season je samo varijabla nešto grublje granulacije od varijable mnth, a za obje bismo očekivali da objašnjavaju sličan efekt u podatcima kao i varijabla temp. Varijable holiday i weathersit bi mogle biti korisne i zanimljive.
+
+Korištenje kategorijskih varijabli s više od dvije kategorije kao int vrijednosti u regresiji se ne preporuča za nominalne varijable, iako u tom obliku mogu izgledati korisne u modelima.
+
+```{r kategorijske ulazne varijable - sirove}
+
+boxplot(cnt~weathersit,data=bike.sharing.data) #kvadratni dijagram se moze koristiti za graficki provjeriti linearnost efekta kategorijske varijable na neku izlaznu varijablu
+
+fit.multi.1 = lm(cnt ~ atemp + hum + windspeed + weathersit, bike.sharing.data)
+summary(fit.multi.1)
+
+```
+
+
+Rezultati upućuju na to da je ovako predstavljena varijabla season značajna u modelu, no model je vrlo vjerojatno samo uhvatio efekt vrlo malih vrijednosti izlaza za zimu (season = 1) i ne može objasniti efekt smanjenih vrijednosti za jesen (season = 4) u odnosu na proljeće i ljeto. 
+
+Za predstavljanje kategorijskih varijabli kao ulaz regresijskog modela postoje različite tehnike, a jedna od najjednostavnijih i najčešće korištenih su tzv. dummy varijable. Svaka kategorija u kategorijskoj varijabli predstavljena je svojom vlastitom indikatorskom varijablom koja poprima vrijednost 1 u slučaju da originalna kategorijska varijabla poprima vrijednost te kategorije, a 0 inače. Jednostavno generiranje dummy varijabli dostupno je u paketu fastDummies. 
+
+
+```{r kategorijske ulazne varijable - dummy varijable}
+
+require(fastDummies)
+bike.sharing.data.d = dummy_cols(bike.sharing.data,select_columns='weathersit')
+
+#procjena modela s dummy varijablama
+fit.multi.d = lm(cnt ~ atemp + hum + windspeed + holiday + weathersit_1 + weathersit_2, bike.sharing.data.d)
+summary(fit.multi.d)
+
+```
+
+Dummy varijable će uvijek biti linearno zavisne ako ih sve koristimo u regresijskim modelima (objašnjenje: ako znamo da vrijednost kategorijske varijable nije ni jedna od 3 kategorije, onda sigurno znamo da je 4. kategorija) - stoga je uvijek potrebno isključiti jednu od dummy varijabli iz modela. Bez obzira na to koje varijable uključili, ukupni model će biti isti, ali samo zaključivanje o pojedinim dummy varijablama u slučajevima kad imamo više od dvije kategorije će biti nešto kompliciranije.
+
+## Vremenski zavisne varijable
+U nekim slučajevima znamo da izlazna varijabla ima i izraženu vremensku zavisnost - u konkretnom slučaju možemo biti sigurni da, ukoliko znamo današnji broj iznajmljenih bicikala, mala je vjerojatnost da će sutrašnji biti previše različit, čak i kad modeliramo efekte vremena, temperature itd. To je uostalom vidljivo i u grafičkim prikazima reziduala u ovisnosti u datumu za gore navedene modele.
+
+Postoji jednostavan način na koji se neki od ovih vremenskih efekata mogu modelirati bez upotrebe složenijih modela - u regresiju se kao ulazna varijabla uključi vremenski pomaknuta izlazna varijabla koja označava "prošlost" koja je u trenutku modeliranje uglavnom poznata. Konkretno, uz sve navedene varijable, za modelirati varijablu cnt u trenutku $t$ možemo uključiti i samu varijablu cnt u trenutku $t-1$.
+
+```{r vremenski pomak u zavisnoj varijabli}
+
+#vremenski pomak varijable cnt
+bike.sharing.data.d$lag.cnt = c(NA,bike.sharing.data.d$cnt[1:length(bike.sharing.data.d$cnt)-1])
+
+#procjena modela s vremenski pomaknutom varijablom cnt na ulazu
+fit.multi.d.timelag = lm(cnt ~ lag.cnt + atemp + hum + windspeed + holiday + weathersit_1 + weathersit_2, bike.sharing.data.d)
+summary(fit.multi.d.timelag)
+
+plot(bike.sharing.data.d$dteday[2:length(bike.sharing.data.d$dteday)],fit.multi.d.timelag$residuals) #reziduali u ovisnosti o datumu
+
+
+```
+
+
+## Transformacije podataka, dodavanje interkacijskih članova
+U nekim situacijama, u svrhu izgradnje boljeg modela poželjno je nad ulaznim ili izlaznim varijablama primjeniti transformacije, najčešće $f(x) = \log x$ ili $f(x) = e^x$. 
+Također, moguće je u model regresije dodavati tzv. interakcijske članove ili kvadrate, kubove, ...itd. ulaznih varijabli, npr. $x_1^2$, $x_1x_2$, $x_2^2$.
+
+U oba slučaja modifikacije se primjenjuju na temelju pretpostavki o prirodi interakcije i modelu. Na primjeru temperature, u jednom od prvih grafova se mogao vidjeti potencijalno nelinearan efekt temperature - na najvišim temperaturama broj iznajmljenih bicikala se ipak smanjivao (što ima smisla).
+
+```{r transformacija}
+
+# moguce je provjeriti gore navedenu tvrdnju prvo na primjeru samo temperature
+fit.atemp.sq = lm(cnt ~ atemp + I(atemp^2),bike.sharing.data.d)
+summary(fit.atemp.sq)
+
+#jednostavan nacin za graficki prikazati nelinearne krivulje
+f = function(x, coeffs)
+  return(coeffs[[1]] + coeffs[[2]] * x + coeffs[[3]] * x^2)
+plot(bike.sharing.data$atemp,bike.sharing.data$cnt) 
+curve(f(x, fit.atemp.sq$coefficients), add = TRUE, col = "red")
+
+```
+
+Uključivanjem ovako transformiranih varijabli moguće je dodatno poboljšati ukupni model višestruke regresije.
+
+```{r model s transformacijom}
+
+#model regresije sa svim varijablama
+fit.multi.d.timelag.sq = lm(cnt ~ lag.cnt + atemp + I(atemp^2) + hum + windspeed + holiday + weathersit_1 + weathersit_2, bike.sharing.data.d)
+summary(fit.multi.d.timelag.sq)
+
+```
+
+## Odabir parametara modela
+
+U odabiru konačnog modela koji biste preporučili tvrtci za iznajmljivanje bicikala, potrebno je voditi se i principom jednostavnosti - jednostavniji model je uglavnom preferiraniji ukoliko je jednako dobar kao i neki alternativni složeniji model. Budući da će modeli s više varijabli u pravilu uvijek objašnjavati veći udio varijance od modela s manjim podskupom istih varijabli, nije moguće usporediti modela s različitim brojem varijabli gledajući samo njihove greške.
+
+Pri odabiru modela u odnosu za velik broj razmatranih varijabli moguće je koristiti različite tehnike (tzv. model selection) koje nisu dio ovog kolegija. No, kao jedan od jednostavnijih alata za usporedbu modela različitih broja parametara moguće je koristiti i prilagođeni koeficijent determinacije $R_{adj}^2$, koji penalizira dodatne parametre u modelu.
+
+U ovom slučaju, varijabla holiday potencijalno nije toliko korisna u modelu i možda se može izbaciti.
+
+
+```{r smanjenje broja parametara}
+
+#model s varijablom holiday
+fit.multi.d.timelag.sq = lm(cnt ~ lag.cnt + atemp + I(atemp^2) + hum + windspeed + holiday + weathersit_1 + weathersit_2, bike.sharing.data.d)
+summary(fit.multi.d.timelag.sq)
+
+#model bez varijable holiday
+fit.multi.d.timelag.sq.final = lm(cnt ~ lag.cnt + atemp + I(atemp^2) + hum + windspeed + weathersit_1 + weathersit_2, bike.sharing.data.d)
+summary(fit.multi.d.timelag.sq.final)
+
+
+```
+
+Rezultati upućuju na to da varijabla holiday ipak daje određenu korisnu informaciju u modelu, čak i kad koristimo $R_{adj}^2$.
+
+Druga često korištena metoda je jednostavno izbacivanje onih regresora koji nemaju značajne koeficijente - no zbog interakcija među regresorima u multivarijatnoj regresiji to nije uvijek pouzdana metoda. Također, u slučaju jako velikog broja varijabli se mogu javiti i problemi ponovoljenih usporedbi (višestrukog testiranja).
+
+
+## Zaključak
+
+Konačan model sadržava relevantne varijable koje objašnjavaju čak preko $80\%$ varijance broja iznajmljenih bicikala dnevno. Osim metričkih varijabli temperature zraka, vlažnosti i vjetra, uključen je i kvadrat temperature zraka (zbog nelinearnog efekta), kategorijska varijabla koja ukazuje na praznike, dummy varijable za kategoriju vremenske situacije, te prethodna ("jučerašnja") vrijednost broja iznajmljenih bicikala.
+
+Sve navedene varijable osim holiday su značajne na razini 0.01, kao i sam model, na što upućuju rezultati t-testova pojedinih koeficijenata i F-testa čitavog modela.
+
+
+
+
+

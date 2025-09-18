@@ -1,0 +1,772 @@
+
+---
+title: "3 Vektori, matrice i liste"
+author: "Damir Pintar"
+date: "24. kolovoz 2017"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = 'hold')
+```
+
+
+***
+
+
+## Vektori
+
+- Vektor je "složeni" tip podataka u jeziku R
+     - sadržava više vrijednosti istog tipa - poput polja u C-u ili Javi!
+- u R-u je (gotovo) svaki tip varijable zapravo vektor!  
+     - varijable i konstante koje smo koristili u prethodnoj lekciji su zapravo bili jednoelementni vektori
+- novi vektor (sa više od jednog elementa) stvaramo uz pomoć funkcije `c` (od engl. *combine*):
+
+***
+
+
+```{r}
+# numerički vektor
+m <- c(1, 2, 3, 4, 5)  
+
+# logički vektor
+v <- c(T, F, T)
+
+# znakovni vektor
+imena <- c("Ivo", "Pero", "Ana")
+```
+
+
+***
+
+
+## Vektori
+
+Dakle, jednostavno rečeno, **vektor je uređeni skup elemenata istog tipa**. 
+
+- ovo konkretno znači da svi elementi vektora **moraju biti istog tipa**
+
+- ako stvaramo novi vektor sa elementima različitih tipova podataka, R će sve elemente automatski pretvoriti u "najjači" tip, što će na kraju postati i tip samog vektora
+    - termin "jači" tip u ovom kontekstu označavaju mogućnost tipa da pohrani svu informaciju "pohranjenu u slabiji "slabijeg"" tipa, a u općenitom slučaju pretvorba ide u smjeru *logički -> numerički -> znakovni* tip
+
+
+***
+
+
+## Zadatak 3.1 - stvaranje vektora
+
+```{r}
+# stvorite novi vektor `x` sa četiri proizvoljna elementa sljedećih tipova: 
+#  logički, realni, znakovni i cjelobrojni
+x <- c(TRUE, 3.2, "ha", 1)
+# ispišite na zaslon sadržaj vektora i njegovu klasu
+x
+class(x)
+
+```
+
+
+***
+
+## Eksplicitna pretvorba vektora u drugi tip
+
+- vektor možemo eksplicitno pretvoriti u drugi tip uz pomoć već upoznatih funkcija `as.<naziv_tipa>`
+- ukoliko je pretvorbu nemoguće provesti element će biti pretvoren u `NA` uz prikladno upozorenje.
+
+***
+
+## Zadatak 3.2  -eksplicitna pretvorba tipa vektora
+
+```{r}
+x <- c(1, T, 2L)
+y <- c(1L, 2L, 3L)
+z <- c(1.25, TRUE, "Ana" )
+
+# razmislite o mogućem rezultatu a potom pokušajte izvršiti sljedeće pretvorbe
+# vektor `x` u numerički tip
+as.numeric(x)
+# vektor `y` u znakovni tip
+as.character(y)
+
+# vektor `z` u cjelobrojni tip
+as.integer(z)
+# z je trenutno string i zbog toga se true 'izgubio' "TRUE"
+z
+```
+
+
+Objasnite -  zašto u zadnjem primjeru vrijednost `TRUE` nije postala `1L` već `NA`? 
+
+
+***
+
+
+## Spajanje vektora
+
+Funkcijom `c` možemo također i više vektora spojiti u jedan:
+
+```{r}
+a <- c(1, 2, 3)
+b <- c(4, 5)
+c <- c(6, 7, 8)   # varijablu smijemo nazvati "c" usprkos tome što postoji funkcija c()
+
+d <- c(a, b, c)   # d je sada c(1, 2, 3, 4, 5, 6, 7, 8)
+d <- c(1,d)       # dodavanje 1 na pocetak d-a
+d <- c(d,1)       # dodavanje 1 na kraj d-a
+```
+
+
+
+***
+
+
+## Pomoćne funkcije za stvaranje vektora
+
+Pored funkcije `c`, R nudi i dodatne pogodne načine stvaranja novih vektora:
+
+- `:` - operator "raspona" (engl. *range*), pri čemu dajemo raspon od gornje do donje granice, obje uključive
+- `seq` - funkcija sekvence (engl. *sequence*), radi slično operatoru raspona, ali s dodatnim mogućnostima
+- `rep` - funkcija repliciranja (engl. *replicate*), ponavlja zadane elemente zadani broj puta
+   
+***
+
+## Zadatak 3.3  - pomoćne funkcije za stvaranje vektora
+
+```{r}
+# ispišite rezultate sljedećih naredbi
+
+1:5
+rep(c(1, 2, 3), times = 3)
+rep(c(1, 2, 3), each = 3)
+seq(1, 5, by = 0.5)
+```
+  
+
+
+***
+
+## Dodatni načini stvaranja vektora
+
+Vektore možemo stvoriti i uz pomoć funkcija koje odgovaraju imenima tipova vektora (`numeric`, `character` i sl.) pri čemu kao parametar navodimo željenu duljinu vektora
+
+- ovo često radimo kao "pripremu" vektora za naknadno punjenje stvarnim vrijednostima, tj. svojevrsnu rezervaciju mjesta u radnoj memoriji 
+- na ovaj način možemo stvoriti i "prazan" vektor određenog tipa, kojem potom uz pomoć funkcije `c` možemo naknadno dodavati elemente
+
+```{r}
+x <- numeric(2)         # vektor se puni "nultim" elementima, u ovom slučaju (0, 0)
+y <- character(5)
+z <- integer(0)         # "prazan" vektor!
+z <- c(z, 1)            # dodaj vektoru element 1 (zapravo "spoji prazan vektor i element 1")
+```
+
+
+***
+
+## Provjera postojanja elementa unutar vektora
+
+Provjeru da li neki vektor sadrži određeni element možemo napraviti uz pomoć operatora `%in%`:
+
+```{r}
+4 %in% seq(1, 10, 2)     
+"d" %in% c("a", "b", "c", "d")  
+```
+
+
+Pogledajmo sada kako pristupiti pojedinim elementima vektora
+
+***
+
+## Operator `[`
+
+Elementima vektora pristupamo preko indeksnog operatora `[`, uz pomoć kojeg možemo i mijenjati elemente vektora:
+
+```{r}
+a <- c(2, 4, 6)
+a[1]             # ispisuje vrijednost 2
+a[2] <- 5        # element na 2. mjestu postaje 5
+a[5] <- 7        # na 5. mjesto dodaje se 7, a "rupa" se popunjava sa NA
+a
+```
+ 
+(Uočite jednu pomalo neuobičajenu činjenicu - *prvi element vektora u R-u ima indeks 1, a ne 0!*)
+
+U radu s programskim jezikom R vrlo rijetko dohvaćamo ili mijenjamo elemente jedan po jedan. Puno češće upravljamo većim brojem elemenata odjednom korištenjem principa *vektorizacije* i *recikliranja*. Razumijevanje ovih pojmova presudno je za svladavanje jezika R, tako da ćemo ih detaljno objasniti u nastavku.
+
+
+***
+
+## Principi vektorizacije i recikliranja
+
+**Vektorizacija** ili bolje rečeno **vektorizirana operacija ili funkcija** jednostavno znači da se **operacije rade nad više elemenata odjednom** 
+
+- ako zadamo R-u da radi neku operaciju ili funkciju nad nekim vektorom vrijednosti, R će funkciju ili operaciju izvesti nad svakim elementom posebno i vratiti rezultantni vektor kao rezultat
+-a ako provodimo binarnu operaciju nad dva vektora, ona će se provesti nad **"uparenim"** ili **"poravnatim"** elementima obaju vektora (pretpostavimo za sada radi jednostavnosti da su vektori jednake duljine).
+
+
+***
+ 
+
+## Zadatak 3.4  - princip vektorizacije
+
+```{r}
+x <- seq(-5, 5, 1) # od -5 do 5, treci parametar je broj skippanje 
+a <- 1:3
+b <- 4:6
+
+
+# pozovite funkciju `abs` za računanje apsolutne vrijednosti
+# nad vektorom `x` i ispišite rezultat
+abs(x)
+
+
+# zbrojite vektore `a` i `b` uz pomoć operatora `+`
+# i ispišite rezultat
+a+b
+
+# pomnožite vektore `a` i `b` uz pomoć operatora `*`
+# i ispišite rezultat
+a*b
+```
+
+
+
+***
+
+
+## Princip recikliranja
+
+Ako vektori nisu jednake duljine, R će koristiti *princip recikliranja*.
+
+**Princip recikliranja** navodi da se **kod nejednake duljine vektora kraći vektor "reciklira" onoliko puta koliko je potrebno da se dostigne duljina duljeg vektora**. 
+
+* najčešće ćemo vidjeti s jedne strane "veliki" vektor (sa više elemenata) a s druge "jednoelementni" vektor
+     + za svaki element "velikog" vektora reciklira se element s druge strane i obavlja se operacija
+* u slučaju da oba vektora imaju više elemenata, treba voditi računa da je broj elemenata jednog višekratnik duljine drugog
+     + ako ovo nije zadovoljeno, R će i dalje reciklirati "kraći"" vektor, samo će ga na kraju morati "odrezati" što će rezultirati odgovarajućim upozorenjem 
+
+
+***
+
+## Zadatak 3.5  - princip recikliranja
+
+```{r}
+a <- 1:4
+b <- c(1, 2)
+c <- rep(5, 3)
+
+# udvostručite elemente vektora `a` i ispišite rezultat
+2 * a
+
+# podijelite vektor `a` vektorom `b` i ispišite rezultat
+a/b
+# pomnožite vektore `a` i `c` i ispišite rezultat
+a*c
+```
+
+***
+
+## Skalarni i vektorski logički operatori
+
+Sada konačno možemo demistificirati razliku između "skalarnih" i "vektorskih" logičkih operatora (podsjetimo se, skalarni su `||` i `&&`, dok su vektorski `|` i `&`). 
+
+- *Skalarni* logički operatori namijenjeni su korištenju sa jednoelementnim vektorima, vraćaju jedinstvenu vrijednosti `TRUE` ili `FALSE` te su pogodni za korištenje raznim u uvjetnim izrazima. 
+
+- *Vektorski* logički operatori koriste standardne R-ove principe vektorizacije i recikliranja, tj. namijenjeni su radu sa logičkim vektorima i kao rezultat daju logički vektor
+
+***
+
+## Zadatak 3.6- skalarni i vektorski logički operatori
+
+```{r}
+a <- c(T, F, F)
+b <- c(T, T, F)
+
+# primjenite skalarnu i vektorsku inačicu logičkog operatora "ili"
+# nad vektorima `a` i `b` i ispišite rezultat
+a || b
+a | b
+
+```
+
+
+
+Vidimo da će skalarna inačica "iskoristiti" samo prvi par elemenata logičkih vektora. Ovo znači da ju u teoriji možemo koristiti u uvjetnim izrazima, iako za to nema opravdanog smisla, a R će se u tom slučaju oglasiti upozorenjem kako bi nam obratio pažnju na činjenicu da vjerojatno koristimo "krivi" operator. 
+
+***
+
+## Zadatak 3.7- vektorizacija usporednih operatora
+
+```{r}
+x <- 1:5
+y <- seq(-10, 10, 5)
+
+#ispišite x i y
+x
+y
+
+#ispišite rezultat naredbe x > y i objasnite rezultat
+x>y
+#ispišite rezultat naredbe x < 3 i objasnite rezultat
+x<3
+```
+
+
+Vektorizacija usporednih operatora vo je osnovni temelj tzv. *logičkog referenciranja*, što je jedna od metoda referenciranja koje ćemo upoznati u nastavku.
+
+***
+
+## Indeksni vektori
+
+Osnovni princip odabira više elemenata odjednom je jednostavan - samo navodimo indekse traženih elemenata na odbrani način. R nudi tri osnovna načina referenciranja:
+
+- lokacijsko referenciranje (engl. *integer- or location-based referencing*)
+- uvjetno referenciranje (engl.*conditional or boolean-based referencing*)
+- imensko referenciranje (engl.*label-based referencing*)
+
+Koje referenciranje ćemo odabrati ovisi o tome želimo li elementima pristupati ovisno o njihovoj lokaciji, imenu ili prema zadanom uvjetu. 
+
+Svaki tip referenciranja u suštini se svodi na korištenje **određenog tipa vektora kao parametra za operator referenciranja**. Ovakav vektor se zbog svoje uloge naziva **indeksnim vektorom**.
+
+
+***
+
+
+## Lokacijsko referenciranje
+
+*Lokacijsko referenciranje* je poopćenje već upoznatog principa referenciranja gdje navodimo redni broj elementa koji nas zanima. Ako želimo više elemenata, jednostavno navedemo njihove indekse "zapakirane" u numerički vektor.
+
+Pokušajte riješiti sljedeći zadatak korištenjem odgovarajućih numeričkih vektora kao parametara indeksnog operatora.
+
+***
+
+## Zadatak 3.8- lokacijsko referenciranje
+
+```{r}
+x <- 1:10
+
+# ispišite prvi element vektora x
+x[1]
+
+# ispišite prva tri elementa vektora x
+x[1:3]
+# ispišite prvi, peti i sedmi element vektora x
+x[c(1,5,7)]
+```
+
+***
+
+## Zadatak 3.9 - lokacijsko referenciranje (2)
+
+```{r}
+x <- 1:10
+# odgovorite na sljedeća pitanja uz pomoć prikladnog primjera
+
+# što vraća indeks 0? 
+x[0]
+# što vraća negativni indeks? 
+x[-1]
+# što vraća indeks izvan granica duljine vektora
+x[11]
+```
+
+***
+
+Indeksni operator se ne koristi samo za dohvaćanje elemenata. Kombinacijom idneksnog operatora i operatora pridruživanja možemo mijenjati elemente vektora (i to također po principu "više elemenata odjednom":
+
+
+
+## Zadatak 3.10 - lokacijsko referenciranje i izmjena elemenata
+
+
+```{r}
+a <- 1:10
+
+# postavite sve elemente vektora `a` od drugog do osmog mjesta na nulu 
+# koristite lokacijsko referenciranje i operator `<-`
+# ispišite vektor `a`
+a[1:8] <- 0
+a
+
+b <- 1:20
+b[2 * 1:5] <- 0
+b
+# razmislite kako izgleda vektor `b` nakon gornje naredbe
+# ispišite vektor `b` i objasnite rezultat
+
+```
+
+
+***
+
+## Uvjetno referenciranje
+
+Ako smo pažljivo razmotrili rezultate dobivene kod primjera sa vektoriziranim usporednim operatorima onda smo mogli vrlo dobro naslutiti kako radi *uvjetno referenciranje*. Princip je jednostavan - za indeksni vektor postavljamo **logički vektor iste duljine kao i vektor čije elemente želimo dohvatiti**. Elementi logičkog vektora određuju koje elemente zadržavamo (pozicije gdje se nalazi vrijednost `TRUE`) a koje odbacujemo (pozicije gdje se nalazi vrijednost `FALSE`).
+
+
+***
+
+## Zadatak 3.11 - uvjetno referenciranje 
+```{r}
+x <- 1:10
+
+# napravite logički vektor `y` duljine 10 sa proizvoljnom kombinacijom
+# vrijednosti TRUE i FALSE
+y <- c(T,F,T,F,F,F,F,T,T,F)
+y
+# indeksirajte vektor `x` vektorom `y`, ispišite i objasnite rezultat
+x[y]
+# ispišite sve elemente vektora `x` manje ili jednake 5
+x[x>5]
+# kao logički indeksni vektor upotrijebite odgovarajući izraz
+# koji koristi usporedni operator
+
+```
+
+***
+
+## Zadatak 3.12 - uvjetno referenciranje (2)
+```{r}
+y <- seq(1, 100, 7)
+studenti <- c("Ivo", "Petra", "Marijana", "Ana", "Tomislav", "Tin")
+y
+# ispišite vektor koji sadrži sve parne, a potom sve neparne elemente vektora `y`
+y[y%%2 == 0]
+
+# ispišite sve elemente vektora `studenti` koji predstavljaju imena od 3 slova
+studenti[nchar(studenti) == 3]
+# (napomena: za prebrojavanje slova znakovnog niza u R-u koristimo funkciju `nchar`)
+
+```
+
+***
+
+
+## Imensko referenciranje
+
+*Imensko referenciranje* radi na principu **eksplicitnog imenovanja elemenata koje želimo "zadržati"**. Da bi mogli koristiti ovakav tip referenciranja moramo zadovoljiti nužan preduvjet - **elementi vektora moraju imati definirana "imena"**.
+
+Vektori koje smo do sada koristili nisu imali imenovane elemente. Svaki element imao je svoju predefiniranu *poziciju* unutar vektora te svoju vrijednost, ali nije imao nikakav poseban dodatni identifikator. Programski jezik R dopušta pridavanje imena elementima vektora na vrlo jednostavan način - korištenjem funkcije `names`, operatora pridruživanja te znakovnog vektora sa odabranim imenima. Moramo voditi računa da vektor imena bude jednake duljine kao originalni vektor!
+
+
+***
+
+## Zadatak 3.13 - imensko referenciranje
+
+```{r}
+visine <- c(165, 173, 185, 174, 190)
+names(visine) <- c("Marica", "Pero", "Josip", "Ivana", "Stipe")
+
+# ispišite vektor `visine`
+visine
+
+# ispišite koliko su visoki Pero i Ivana
+visine[c("Pero", "Ivana")]
+
+```
+
+***
+
+## Brisanje vektora imena
+
+Ukoliko iz nekog razloga poželimo obrisati imena elemenata vektora, jednostavno pozivu funkcije `names` proslijedimo `NULL`.
+
+```{r}
+names(visine)
+```
+
+Pažljiviji programeri uočiti će jednu neobičnu činjenicu u gornjim primjerima - poziv funkcije se koristi kao `lvalue`! Odgovor na pitanje zašto je ovo moguće zahtijeva malo više znanja o internom funkcioniranju jezika R, a za sada je dovoljno reći da se ovdje zapravo radi o pozivu funkcije pravog imena `names<-` koji se "skriva" iza puno intuitivnije i lako razumljive sintakse.
+
+***
+
+## Matrice i polja
+
+Matrice i polja su, jednostavno rečeno, višedimenzionalni vektori. 
+
+- *Matrica* (engl. *matrix*) je vektor sa dvije dimenzije, tj. vektor koji elemente smiješta u "retke" i "stupce"
+- *Polje* (engl. *array*) je vektor sa tri ili više dimenzija
+
+Pripazite - višedimenzionalnost matrica i polja je zapravo prividna! 
+* i matrice i polja su zapravo jednodimenzionalni vektori kojima je dodan atribut dimenzionalnosti, a uz pomoć kojeg jezik R mapira naše naizgled višedimenzionalno referenciranje u "stvarni" indeks elementa jednodimenzionalnog vektora
+     + matrica 2x2 je zapravo vektor od četiri elementa (matrica razrezana "po stupcima"); element s indeksom (2,1) tj. "drugi red, prvi stupac" je zapravo element s indeksom 3, budući da je R, poznavajući atribut dimenzionalnosti interno izračunao (indeks retka x broj redaka + indeks stupca)
+
+
+***
+
+## Stvaranje nove matrice
+
+Postoji nekoliko načina stvaranja nove matrice:
+
+- uz pomoć funkcije `matrix` kojoj prosljeđujemo jednodimenzionalni vektor i željeni broj redaka i stupaca kroz parametre `nrow` i `ncol`
+- "ručnim" postavljanjem dimenzija jednodimenzionalnog vektora uz pomoć funkcije `dim` i pridruživanja dvoelementnog numeričkog vektora sa dimenzijama matrice
+- "ljepljenjem" jednodimenzionalnih vektora koji predstavljaju retke ili stupce nove matrice uz pomoć funkcija `rbind` (engl. *row bind*) i `cbind` (engl. *column bind*)
+
+Demonstrirajmo ove načine u primjerima koji slijede.
+
+***
+
+## Zadatak 3.14 - funkcija `matrix`
+
+```{r}
+x <- 1:12
+# uz pomoć funkcije `matrix` stvorite matricu sa 3 retka i 4 stupca
+# koja sadrži elemente vektora `x`
+# ispišite rezultat na zaslon
+matrix(x,3,4)
+# ponovite postupak ali pozivu funkcije dodajte parametar `byrow = T`
+# ispišite rezultat na zaslon i usporedite s prethodnim rezultatom
+matrix(x,3,4,T)
+
+```
+
+***
+
+## Zadatak 3.15 - funkcija `dim`
+```{r}
+m <- 1:10
+m
+# ispišite rezultat poziva funkcije `dim` nad vektorom `m`
+dim(m)
+m
+# pozivu funkcije `dim` nad vektorom `m` pridružite vektor c(2, 5)
+dim(m) <- c(2,5)
+m
+# ispišite `m` i komentirajte rezultat
+m
+# ispišite rezultate poziva funkcija `nrow` i `ncol` nad matricom `m`
+nrow(m)
+ncol(m)
+```
+
+***
+
+## Transponiranje matrice
+
+Transponiranje matrice je jednostavno izmjena rasporeda redaka i stupaca, tj. retci postaju stupci i obrnuto. U jeziku R za transponiranje koristimo funkciju jednostavnog naziva `t`. Budući da u prethodnom zadatku nismo koristili funkciju `matrix` a time niti imali priliku koristiti parametar `byrow`, jedan od načina da dobijemo rezultatnu matricu popunjenu po retcima jest da ju transponiramo:
+
+```{r, eval = F}
+m <- t(m)  # transponiramo matricu i pohranjujemo natrag u varijablu `m`
+```
+
+
+***
+
+## Funkcije `rbind` i `cbind`
+
+Konačno, matricu možemo stvoriti "ljepljenjem" redaka i stupaca uz pomoć funkcija `rbind` i `cbind`. Ovo je također zgodan način dodavanja novih redaka i stupaca postojećoj matrici.
+
+```{r}
+x <- 1:3
+y <- 4:6
+rbind(x,y)
+```
+
+***
+
+
+## Zadatak 3.16 - funkcije `rbind` i `cbind`
+
+```{r}
+a <- 1:4
+b <- 5:8
+c <- c(0,0)
+
+# stvorite matricu `m` u kojoj će vektori `a` i `b` biti retci
+m <- cbind(a,b)
+m
+# dodajte novi redak na vrh matrice `m` sa elementima vektora `c`
+# ispišite matricu `m`
+m <- rbind(c)
+m
+```
+
+
+
+***
+
+## Rezanje matrica
+
+Sve naučene principe za "rezanje" vektora uz pomoć indeksnih vektora možemo direktno primijeniti nad matricama. Razlike su sljedeće:
+
+- referenciramo svaku dimenziju zasebno
+- prvo referenciramo retke, a potom stupce, a indeksne vektore odvajamo zarezom
+- ako želimo "sve retke" ili "sve stupce" taj indeksni vektor jednostavno izostavimo (ali i dalje koristimo zarez)
+
+```{r, eval = F}
+# pretpostavimo da je `m` matrica dimenzija 3 x 5, sa imenima stupaca od `a` do `e`
+
+m[1, 2:5]                       # prvi redak, svi stupci od drugog do petog
+m[c(F, T, T), c("a", "b")]      # drugi i treći redak, stupci `a` i `b`
+m[,]                            # svi retci i svi stupci (može i samo `m`)
+
+```
+
+U praksi kod matrica najčešće koristimo lokacijsko i imensko referenciranje; uvjetno referenciranje nije previše praktično zbog dvodimenzionalne prirode matrice (iako je izvedivo, samo moramo voditi računa da logički indeksni vektori duljinom odgovaraju pripadajućoj dimenziji).
+
+Jedna od stvari na koju moramo voditi računa jest tendencija jezika R da nam "pomaže" pojednostavljujući rezultat. Tako će rezultat operacije rezanja matrice koja ostavlja samo jedan redak ili stupac automatski postati vektor, tj. izgubiti će atribut dimenzije. Ovo nam nekad ne odgovara, pogotovo ako radimo programske skripte koje u daljnjoj proceduri očekuju matricu, pa makar ona imala dimenziju redaka ili stupaca 1. U tom slučaju kod referenciranja moramo postaviti i dodatni parametar `drop = F`. Ovo često izgleda dosta nezgrapno, zbog čega danas postoje mnogi paketi proširenja jezika R koji ovo "popravljaju", tj. koji se trude rezultat ostavljati u konzistentnom obliku. No parametar `drop` postavljen na `FALSE` treba imati u vidu, budući da će se pojavljivati i na drugim mjestima u sličnoj funkciji.
+
+***
+
+
+
+## Zadatak 3.17 - rezanje matrica
+
+```{r}
+m <- matrix(1:30, 6, 5, T)
+colnames(m) <- c("a", "b", "c", "d", "e")
+m
+# ispišite sve elemente matrice m od drugog do četvrtog retka
+# te od trećeg do petog stupca
+m[2:4,]
+m[,3:5]
+# sve elemente u stupcu naziva "c" postavite na nulu
+# a potom ispišite prva dva retka matrice `m`
+m[,"c"] <- 0
+m[1:2,]
+# ispišite samo stupac "d"
+m[,"d"]
+# ispišite opet stupac "d", ali kod referenciranja dodajte parametar `drop = FALSE`
+# parametar odvojite zarezom (kao da se radi o "trećoj" dimenziji referenciranja)
+m[,"d",drop=F]
+
+```
+
+***
+
+## Polja
+
+Iako se nećemo detaljno baviti poljima, prikažimo radi potpunosti primjer programskog koda koji stvara trodimenzionalno polje te potom ispisuje jedan njegov dio standardnim principom rezanja kojeg smo upoznali kod vektora i matrica.
+
+```{r, eval = F}
+polje <- array(1:24, dim = c(2, 3, 4))  # polje dimenzija 2 x 3 x 4
+
+polje[, 1:2, 3, drop = FALSE]           # ispis svih redaka, prvog i drugog stupca
+                                        # trećeg "sloja", uz zadržavanje tipa polja
+```
+
+***
+
+## Liste
+
+Lista je element programskog jezika R koji se koristi kao "univerzalni spremnik" bilo kakvih podataka. Za razliku od vektora (tj. od pojma vektora kakvog smo ga inicijalno definirali), lista može sadržavati različite tipove podataka ili - češće - skupove različitih tipova podataka.
+
+Listu stvaramo uz pomoć funkcije `list` kojom dodajemo niz parova naziva elemenata i njihovih sadržaja. Ovi elementi mogu biti bilo što, pa čak i druge liste.
+
+```{r, eval = F}
+mojaLista <- list(a = 1, b = 2:100, c = list(x = 1, y = 2))
+mojaLista```
+
+Probajmo stvoriti vlastitu listu u sljedećem primjeru.
+
+***
+
+## Zadatak 3.18 - stvaranje liste
+
+```{r}
+# stvorite novu listu naziva `svastara` koja će imati sljedeće elemente
+#      element naziva `brojevi` sa cijelim brojevima od 1 do 3
+#      element naziva `slova` sa slovima "A" i "B"
+#      bezimeni element sa logičkim vektorom `c(T,F)`
+#      element naziva `imena` sa imenima "Ivo" i "Ana"
+
+svastara <- list (brojevi = list(1:3), slova = list("A","B"), c(T,F), imena = list("Ivo","Ana"))
+# ispišite listu `svastara`
+svastara
+```
+
+
+***
+
+## Zadatak 3.19 - funkcija `str`
+
+Funkcija `str` (engl. *structure*) omogućuje nam uvid u svojstva i sadržaj liste bez ispisivanja cijele liste. Ovu funkciju analitičari često koriste, kako za pregled lista tako i za brzi uvid u već spomenute podatkovne okvire koje ćemo raditi u idućem poglavlju.
+
+
+```{r}
+# ispišite strukturu liste `svastara
+str(svastara)
+
+```
+
+***
+
+## Lista = vektor?
+
+Na početku ove lekcije smo rekli da u R-u vrijedi princip "sve je vektor" te da su vektori zapravo uređeni skupovi elemenata istog tipa. Iz ovog bi se moglo zaključiti da ta činjenica ne vrijedi za liste - oni očito sadržavaju elemente različitih tipova. No pravi odgovor je - i liste su zapravo vektori, a definicija zapravo nije narušena. Naime, svi elementi liste su zapravo male jednoelementne liste, tako da su formalno svi elementi istog tipa.
+
+***
+
+## Zadatak 3.20 - tip elemenata liste
+```{r}
+# ispišite prvi element liste svastara 
+svastara[1]
+# provjerite njegov tip
+typeof(svastara[1])
+```
+
+***
+
+## Operator `[[`
+
+Dakle, dokazali smo da su elementi liste zapravo male liste, što se vidi iz ispisa samog elementa, kao i provjere njezinog tipa. Možda nam se čini da bi elementi gore stvorene liste trebali biti vektori, budući da smo listu i stvorili "slaganjem" različitih vektora, no u postupku stvaranja objekta R je "umotao" elemente u jednoelementne liste prije nego ih je uklopio u "veliku" listu. 
+
+Često ne želimo raditi s elementom liste kao "malom listom", nego ga trebao u njegovom "originalnom" obliku. Za ovo koristimo  operator `[[`, tj. operator "dvostruke uglate zagrade".
+
+***
+
+## Zadatak 3.21 - operator `[[`
+```{r}
+# ispišite prvi element liste svastara korištenjem  operatora `[[`
+svastara[[1]]
+# provjerite njegov tip
+typeof(svastara[[1]])
+```
+
+***
+
+## Operator `$`
+
+
+Navedeni operator najčešće koristimo kako bi dohvatili odabrani element liste kojeg definiramo brojem ili (ako ima ime) nazivom elementa. Kod ovakvog dohvata moramo koristiti kombinaciju simbola `lista[["ime_elementa"]]` koja je ponešto nespretna za tipkanja. Zbog toga R nudi alternativni način pristupa elementima liste prema nazivu korištenjem operatora `$`, tj. `lista$ime_elementa`. 
+
+
+***
+
+## Zadatak 3.22  -operator `$`
+
+```{r}
+# ispišite element naziva "slova" liste svastara
+# korištenjem operatora `[[`
+svastara[["slova"]]
+# ispišite isti element korištenjem operatora `$`
+svastara$"slova"
+```
+
+***
+
+## Još malo o listama
+
+Liste su iznimno popularni tip objekta u R-u budući da predstavljaju univerzalni predložak za kompleksnije podatkovne strukture, između ostalog i kompleksnije objekte u užem smislu (kao što ćemo vidjeti kasnije). Lista je također "temelj" za daleko najpopularniji i najčešće korišteni element jezika R - podatkovni okvir - kojeg ćemo upoznati u idućoj lekciji.
+
+Za kraj naučimo dodati element u listu. Ovo je najjednostavnije učiniti korištenjem već spomenutog operatora `$` - kao npr.  `lista$noviElement <- noviElement`. Element brišemo tako da mu dodijelimo vrijednost `NULL`.
+
+
+***
+
+## Zadatak 3.23  - dodavanje elementa u listu
+
+```{r}
+# listi `svastara` dodajte element `parniBrojevi` koji sadrži
+# sve parne brojeve od 1 do 100
+svastara$parniBroj <- list (seq(2,100,2)) 
+# obrišite treći element liste
+svastara[[3]] <- NULL
+
+# ispišite listu `svastara
+svastara
+```
+
+
+

@@ -1,0 +1,564 @@
+---
+title: "11 Prilagodba podatkovnih skupova"
+author: ""
+date: ""
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = 'hold')
+```
+
+***
+
+## Zašto koristiti paket `dplyr`?
+
+- jednostavna sintaksa (slična SQL-u, ali proceduralna) 
+      - zasnovana na pet glavnih "glagola" 
+- veća učinkovitost od metoda koje nudi osnovni paket 
+- integracija sa relacijskim bazama podataka 
+
+
+## Sintaksa paketa `dplyr`
+
+"Pet glagola" koje nudi paket `dplyr` su sljedeći:
+
+- `filter` - za filtriranje podatkovnog skupa po retcima
+- `select` - za odabir pojedinih stupaca
+- `arrange` - za promjenu redoslijeda redaka
+- `mutate` - za stvaranje novih stupaca iz postojećih
+- `summarise` - za agregiranje podataka
+
+Pored pet osnovnih glagola vrlo često koristimo i:
+
+- `group_by` za grupiranje podataka unutar podatkovnog skupa
+- porodicu `join` funkcija za spajanje podatkovnih okvira
+
+## Ogledni podatkovni skup: *Titanic*
+
+ *"Titanic Passenger Survival Dataset"*
+ 
+ Ovaj skup pruža informacije o sudbinama putnika prekoocenaskog putničkog broda Titanic koji je potonuo 14. travnja 1912. godine pri čemu je od 2223 putnika i članova posade preživjelo samo njih 706. 
+ 
+Podatkovni skup između ostalog sadrži imena putnika, spol, godište u trenutku potonuća, putničku klasu  i sl. 
+
+Postoji inačica ovog podatkovnog skupa koja dolazi sa samom *R* distribucijom, no mi ćemo koristiti njegovu proširenu inačicu sa *Kaggle* natjecanja *"Titanic: Machine Learning From Disaster"* o kojem se više detalja može saznati na <a href = "https://www.kaggle.com/c/titanic">ovoj poveznici</a>.
+
+## Funkcije `read_csv` i `glimpse`
+
+Učitajmo ovaj podatkovni skup uz pomoć funkcije `read_csv`, funkcije paketa `readr` koja "nadograđuje" funkciju `read.csv`. Isto tako, umjesto funkcije `str`, pokušajmo koristiti njezin ekvivalent `glimpse` kojeg nudi paket `dplyr`.
+
+
+
+## ZADATAK 11.1 - ogledni podatkovni skup `Titanic`
+
+```{r}
+#učitajte podatkovni skup iz datoteke `Titanic.csv` u varijablu `titanic`
+
+#pogledajte strukturu podatkovnog okvira `titanic` uz pomoć funkcije `glimpse`
+#i prvih nekoliko redaka uz pomoć funkcije `head`
+
+
+titanic <- read_csv("Titanic.csv")
+
+glimpse(titanic)
+head(titanic)
+```
+
+
+Ako želimo neki postojeći podatkovni okvir "nadograditi" u *tibble*, to možemo učiniti uz pomoć naredbe `as_tibble` (uočite kako se funkcije iz kolekcije `tidyverse` često oslanjaju na podcrtu tj. "*underscore*" kako bi ih lakše identificirali kao nadogradnje osnovnih funkcija koje imaju slične nazive ali koriste točku).
+     
+Uz pomoć funkcije `options` i parametara `tibble.print_max` i `tibble.width` možemo kontrolirati koliko u općenitom slučaju želimo ispisati stupaca i redaka npr:
+
+
+
+```{r}
+# zelim u ispisu vidjeti najvise 10 redaka ali sve stupce
+options(tibble.print_max = 10, tibble.width = Inf)
+
+```
+
+a kod pojedinog ispisa broj redaka možemo birati uz pomoć parametra `n`:
+
+```{r, eval = F}
+# `df` je klase `tbl_df`, zelim vidjeti 50 redaka u ispisu
+print(df, n = 50)
+```
+
+
+
+## Dokumentacija podatkovnog skupa
+
+```{r, eval = F}
+VARIABLE DESCRIPTIONS:
+survival        Survival
+                (0 = No; 1 = Yes)
+pclass          Passenger Class
+                (1 = 1st; 2 = 2nd; 3 = 3rd)
+name            Name
+sex             Sex
+age             Age
+sibsp           Number of Siblings/Spouses Aboard
+parch           Number of Parents/Children Aboard
+ticket          Ticket Number
+fare            Passenger Fare
+cabin           Cabin
+embarked        Port of Embarkation
+                (C = Cherbourg; Q = Queenstown; S = Southampton)
+```
+
+## Kategorizacija stupaca
+
+U ovom trenutku bi trebalo razmotriti uključuje li podatkovni skup neke kategorijske podatke. Kao što smo naučili, za razliku od funkcije `read.csv` koja automatski faktorizira sve znakovne stupce (što nije preporučljivo), funkcija `read_csv` iz paketa `readr` ne faktorizira ništa, već to ostavlja na odgovornost analitičaru. Iako ovo predstavlja dodatni posao za analitičara, razina kontrole i robusnosti koja se time dobiva je više nego dostatni kompromis. 
+
+U podatkovnom skupu `titanic` uočavamo sljedeće kategorijske varijable:
+
+- *Survival* (preživljavanje – 2 kategorije: 0 i 1)
+- *Pclass* (putnička klasa – 3 kategorije: 1, 2 i 3)
+- *Sex* (spol – 2 kategorije: "M" i "F")
+- *Embarked* (luka ukrcaja – 3 kategorije: "C", "Q" i "S")
+
+Faktorizirajmo navedene stupce.
+
+
+
+## ZADATAK 11.3 - kategorizacija stupaca podatkovnog okvira `titanic`
+
+```{r}
+# pretvorite stupce `Survival`, `Pclass`, `Sex` i `Embarked`
+# podatkovnog okvira `titanic` u faktore
+
+titanic$Survived <- as.factor(titanic$Survived)
+titanic$Pclass <- as.factor(titanic$Pclass)
+titanic$Sex <- as.factor(titanic$Sex)
+titanic$Embarked <- as.factor(titanic$Embarked)
+# proučite podatkovni okvir `titanic`
+# uz pomoć funkcije `glimpse`
+
+glimpse(titanic)
+
+
+
+
+```
+
+
+## Odabir redaka podatkovnog okvira uz paket `dplyr`
+
+Podsjetimo se: za odabir redaka podatkovnog okvira najčešće koristimo dvodimenzionalno ("matrično") indeksiranje gdje na mjesto prve dimenzije stavljamo (uglavnom) logički ili numerički vektor
+
+Primjer:
+
+```{r, eval = F}
+podaci[podaci$a > 5 & podaci$b != 3, ]
+
+
+```
+
+Uočimo potrebu za stalnim referenciranjem podatkovnog okvira te nešto težu interpretabilnost naredbe (nije odmah očito da se radi o odabiru redaka).
+
+
+Funkcija `filter` paketa `dplyr` eksplicitnom sintaksom odaje da se radi o filtriranju redaka, a također omogućuje korištenje imena stupaca bez potrebe za referenciranjem imena podatkovnog okvira:
+
+```{r, eval = F}
+filter(podaci, a > 5 & b != 3)
+
+```
+
+## Ostale funkcije za odabir redaka
+
+- `distinct(podaci)` - za uklanjanje duplikata
+- `slice(podaci, 1:10)` - za lokacijsko indeksiranje
+- `sample_frac(podaci, 0.2)` - nasumični odabir dijela skupa po danom omjeru
+- `sample_n(podaci, 50)` - nasumični odabir zadanog broja redaka
+- `top_n(podaci, 10, a)` - prvih n redaka, gledano po poretku stupca a
+
+Za poredak redaka u ispisu možemo koristiti:
+
+- `arrange(podaci, a, desc(b))` - poredaj po stupcu `a` uzlazno pa po `b` silazno
+
+
+
+## ZADATAK 11.3 - odabir redaka 
+
+```{r}
+# ispišite podatke o svim putnicima prve klase starijim od 60 godina
+filter(titanic, Pclass == 1 & Age > 60)
+# ispišite podatke o svim preživjelim muškim putnicima koji 
+# u imenu imaju `George` ili `Frank`
+filter(titanic, str_detect(Name, "(George|Frank)") & Sex == "male" & Survived == 1)
+
+# provjerite ima li u podatkovnom skupu duplih obzervacija
+nrow(titanic) == nrow(distinct(titanic))
+
+# nasumično izaberite i ispišite podatke o pet putnika koji nisu preživjeli potonuće
+# ispis poredati silazno po cijeni karte
+filter(titanic, Survived == 0) %>% sample_n(5) %>% arrange(desc(Fare))
+
+# ispišite podatke o pet najstarijih putnica prve klase 
+filter(titanic, Pclass == 1 & Sex == "female") %>% top_n(5, Age) %>% arrange(Age)
+
+```
+
+
+## Odabir stupaca podatkovnog okvira uz paket `dplyr`
+
+Kod rada sa podatkovnim okvirima stupce najčešće odabiremo imenskim indeksiranjem:
+
+```{r, eval = FALSE}
+podaci[, c("a", "b", "c")]
+```
+
+I ovdje uočimo nespretnost sintakse (potreba za korištenjem funkcije `c` i navodnika) te nepostojanje eksplicitnog indikatora da se radi o odabiru stupaca.
+
+
+Funkcija `select` nam omogućuje eksplicitni odabir stupaca uz pomoć sintakse:
+
+```{r, eval = FALSE}
+select(podaci, a, b, c)
+```
+
+
+## Dodatne opcije kod odabira stupaca
+
+Funkcija `select` ima čitav niz pomoćnih funkcija i operatora koji uvelike proširuju njezinu funkcionalnost, kao npr:
+
+- `select(podaci, a:c)` - odaberi stupce od `a` do `c`
+- `select(podaci, -a, -b)` - odaberi sve stupce osim `a` i `b`
+- `select(podaci, starts_with("PO")))` - odaberi stupce koji počinju sa slovima `"PO"`
+- `select(podaci, contains("stup"))` - odaberi stupce koji sadrže podniz `"stup"`
+- `select(podaci, matches("[123]{2,3}"))` - odaberi stupce koji odgovaraju danom regularnom izrazu
+
+Ovo nisu sve mogućnosti, no dodatne opcije lako je pronaći u službenoj dokumentaciji.
+
+## ZADATAK 11.4 - odabir stupaca 
+
+```{r}
+# za nasumično odabranih 10 redaka ispišite ime putnika, dob te 
+# da li je preživio potonuće ili ne
+sample_n(titanic, 10) %>% select(Name, Age, Survived)
+
+
+# za prvih 10 najstarijih putnika ispišite sve atribute od imena do cijene karte
+top_n(titanic, 10, Age) %>% select(Name:Fare)
+
+# za nasumično odabranih 1% redaka ispišite sve atribute osim identifikatora 
+# putnika i broja kabine
+sample_frac(titanic, 0.01) %>% select(-PassengerId, -Cabin)
+
+# za retke od broja 10 do broja 20 ispišite sve stupce koji počinju samoglasnikom
+slice(titanic, 10:20) %>% select(matches("^[AEIOUaeiou]"))
+
+# za nasumičnih 10 putnika koji imaju nepoznat broj godina ispišite sve 
+# atribute od imena do cijene karte, 
+# potom putničku klasu te konačno da li je putnik preživio ili ne
+# poredajte ispis abecedno po imenu
+filter(titanic, is.na(Age)) %>% sample_n(10) %>% 
+  select(Name:Fare, Pclass, Survived) %>% arrange(Name)
+```
+
+
+## Stvaranje novih stupaca uz funkcije paketa `dplyr`
+
+U radu sa podatkovnim okvirima često iz postojećih stupaca izvodimo nove stupce (npr. stvaramo indikatorski stupac ili kategoriziramo numeričku varijablu).
+
+Ako pretpostavimo stvaranje novog stupca koji će pohraniti zbroj numeričkih vrijednosti postojećih stupaca, onda bi uz pomoć osnovnih funkcija *R*-a to proveli na sljedeći način:
+
+```{r, eval = F}
+podaci$c <- podaci$a + podaci$b
+```
+
+
+Paket `dplyr` nam nudi alternativu u obliku funkcija `mutate` i `transmute`:
+
+```{r, eval = F}
+mutate(podaci, c = a + b)
+
+transmute(podaci, c = a + b)
+```
+
+Razlika: `mutate` vraća cijeli originalni podatkovni okvir uz novostvorene stupce, dok `transmute` zadržava samo one koje smo naveli unutar poziva funkcije. Zbog toga `transmute` možemo koristiti kao skraćenu kombinaciju `mutate` i `select`, npr:
+
+```{r, eval = F}
+transmute(podaci, a, c = a + b)
+# isto kao i mutate(podaci, c = a + b) %>% select(a, c)
+```
+
+
+## Dodatne opcije kod stvaranja novih stupaca
+
+Funkcije `mutate` i `transmute` koriste uobičajene (vektorizirane) funkcije i operatore, a imamo na raspolaganju i niz dodatnih tzv. "prozorskih" (*window*) funkcija koje nam omogućuju dodatnu fleksibilnost kod stvaranja novih varijabli, kao npr:
+
+- `ntile`, `cut` - stvaranje kategorijske varijable koja grupira vrijednosti u `n` ladica; `ntile` će napraviti kategorije jednake veličine, dok će `cut` rezati u ovisnosti o veličini intervala numeričkih vrijednosti
+- `dense_rank`, `min_rank` - rangiranje obzervacija (razlika je samo u tretiranju obzervacija sa istim vrijednostima)
+- `between` - opisuje da li je varijabla nekog stupca u intervalu zadanom sa dva druga stupca
+- `pmin`, `pmax` - "paralelni minimum i maksimum", tj. minimum ili maksimum vrijednosti odabranih stupaca gledano po retcima
+- itd.
+
+Popis svih dostupnih funkcija može se pronaći u dokumentaciji.
+
+## ZADATAK 11.5 - stvaranje novih stupaca 
+
+```{r}
+
+# tablici `titanic` dodajte logički stupac `hadRelativesOnBoard` koji će opisivati
+# da li je putnik imao rodbine na brodu
+titanic <- mutate(titanic, hadRelativesOnBoard = SibSp > 0 | Parch > 0)
+
+# za nasumičnih 10 putnica starijih od 20 godina koje su se ukrcale u Southamptonu
+# ispišite ime putnice, putničku klasu i prilagođenu cijenu karte
+# cijenu karte zamijenite odgovarajućom cijenom koliko bi ona iznosila danas
+#   (pretpostavite da je $1 iz 1912. jednak današnjih $23.85, uračunavajući inflaciju)
+# novi stupac nazovite `FareToday` a 
+# iznos zaokružite na dvije decimale i dodajte prefiks `$`
+# ispis poredajte po putničkoj klasi silazno
+filter(titanic, Sex == 'female', Age > 20,  Embarked == 'S') %>% sample_n(10) %>%  
+transmute(Name, Pclass, FareToday = str_c("$", round(Fare * 23.85, 2))) %>% arrange(desc(Pclass))
+
+# stvorite stupac FareCategory kojim ćete podijeliti cijene karata 
+# u pet kategorija jednake veličine
+# potom nasumično izaberite 20 putnika i ispišite 
+# ime putnika, putničku klasu, cijenu karte i kategoriju
+# ispis poredajte po kategoriji cijene
+mutate(titanic, FareCategory = ntile(Fare, 5)) %>% sample_n(20) %>% 
+select(Name, Pclass, Fare, FareCategory) %>% arrange(FareCategory)
+
+# tablici `titanic` dodajte stupac `EmbarkationPort` u kojem će pisati puno 
+# ime luke ukrcaja (Southampton, Queenstown ili Cherbourg)
+# koristite `mutate` i dva `ifelse`
+mutate(titanic, EmbarkationPort = ifelse(Embarked == 'S', 'Southampton', 
+            ifelse(Embarked == 'C', 'Cherbourg', 'Queenstown'))) -> titanic
+
+# ispišite prvih 10 redaka tablice `titanic`
+head(titanic, 10)
+```
+
+
+## Ogledni podatkovni skup: *Houston flights*
+
+Učitajmo paket `dplyr` i podatkovni okvir `hflights` koji se nalazi u paketu istog imena i može ga se dohvatiti iz CRAN repozitorija. Nakon učitavanja paketa podatkovni okvir možemo prebaciti u globalnu okolinu uz pomoć funkcije `data`.
+
+
+## ZADATAK 11.6 - podatkovni skup `hflights`
+
+```{r}
+
+# učitajte paket `hflights`
+# ukoliko je potrebno instalirajte ga sa CRAN repozitorija
+# uz pomoć funkcije `data` učitajte okvir u globalnu okolinu
+
+# pretvorite okvir u `hflights` u klasu "tibble"
+
+# upoznajte se s podatkovnim skupom `hflights`
+# pored funkcija glimpse/head/itd. možete pogledati i dokumentaciju
+# skupa uz pomoć naredbe `?hflights`
+
+install.packages("hflights")  # ukoliko je potrebno
+library(dplyr)               # ako već nisu učitani
+library(hflights)             
+data(hflights)
+
+hflights <- as_tibble(hflights)
+
+glimpse(hflights)
+head(hflights)
+```
+
+
+## Grupiranje i agregacija uz `group_by` i `summarise`
+
+U literaturi koja se bavi analizom podataka često ćemo naići na tzv. SAC paradigmu (engl. *Split-Apply-Combine*). Radi se o strategiji koja se svodi na rastavljanje velikog zadatka na manje dijelove, obavljanje određenog posla na svakom od dijelova te konačno kombiniranje svih rezultata u jedinstvenu cjelinu. Poznavatelji *SQL*-a će ovaj princip lako prepoznati kao grupiranje i agregaciju koji se provode kroz *GROUP BY* segment *SQL* upita uz prateće elemente u *SELECT* dijelu.
+
+Za grupiranje `dplyr` nudi funkciju `group_by` kojom tablicu (podatkovni okvir) pretvaramo u "grupiranu tablicu" (`grouped_tbl`):
+
+```{r, eval = F}
+group_by(podaci, a, b, c)
+```
+
+
+## ZADATAK 11.7 - grupirana tablica
+
+```{r}
+flight815 <- filter(hflights, FlightNum == 815) 
+
+# stvorite varijablu `grouped815` koja će sadržavati retke iz `flight815`
+# grupirane po mjesecu
+grouped815 <- group_by(flight815, Month)
+
+# provjerite klasu varijabli `flight815` i `grouped815`
+class(flight815)
+class(grouped815)
+
+# uz pomoć funkcije `glimpse` pogledajte strukture 
+# varijabli `flight815` i `grouped815`
+
+glimpse(flight815)
+glimpse(grouped815)
+```
+
+
+## Agregacija
+
+grupiranjem nismo "izgubili" nikakvu informaciju - grupirani podatkovni okvir i dalje izgleda identično originalnom, "negrupiranom" okviru. Zapravo jedina naznaka da je nešto drugačije jest nova, nasljeđena klasa te redak `Groups:..` u ispisu redaka. Ovo znači da je grupiranje okvira samo naznaka da se neke daljnje (najčešće agregacijske) operacije ne izvode nad cijelim okvirom, već nad pojedinim grupama. Isto tako, ukoliko želimo, okvir uvijek možemo lako "odgrupirati" uz pomoć funkcije `ungroup`. 
+
+Za agregaciju se koristimo funkcijom `summarise` koja prima podatke (grupiranu tablicu) a potom kombinacije agregacijskih funkcija i stupaca nad kojim se iste izvršavaju, npr.:
+
+```{r, eval = F}
+summarise(podaci, mean(a), sd(a))
+```
+
+Za agregacijsku funkciju u pravilu možemo koristiti bilo koju funkciju koja vektor vrijednosti svodi na jednu vrijednost (npr. `mean`, `max`, `sd` itd.), a često korištene funkcije koje nudi sam paket `dplyr` su:
+
+- `first`, `last`, `nth` - prvi, zadnji, `n`-ti element grupe
+- `n`, `n_distinct` - broj (jedinstvenih) vrijednosti
+
+
+
+## ZADATAK 11.8 -  funkcija `summarise`
+
+```{r}
+# izračunajte prosječno kašnjenje u dolasku leta za varijable `flight815` i `grouped815`
+# koristite funkciju `summarise`
+summarise(flight815, meanDelay = mean(ArrDelay))
+print("------------------------")   
+summarise(grouped815, meanDelay = mean(ArrDelay))
+```
+
+
+## Složeni upiti
+
+U praksi ne čuvamo referencu na grupirane tablice već unutar jedne naredbe provodimo cijeli proces odabira redaka i stupaca, grupiranja i provođenja agregacije. Ako koristimo operator `%>%`, onda to može izgledati ovako:
+
+```{r, eval = F}
+filter(podaci, a > 5) %>%  group_by(a,b) %>%  summarise(mean(c)) %>% arrange(desc(b))
+```
+
+
+## ZADATAK 11.9 - složeni upiti
+
+```{r}
+
+# ispišite koliko je bilo otkazanih letova zbog 
+# lošeg vremena u svakom mjesecu
+# tablica rezultata mora imati stupce 
+# `Month` i `BadWeatherCancellations`
+filter(hflights, CancellationCode == 'B') %>% 
+  group_by(Month) %>% 
+  summarise(BadWeatherCancellations = n())
+# ispišite prosječno vrijeme kašnjenja u dolasku 
+# (ignorirajte retke sa NA) za zrakoplovne luke 
+# LAX, JFK i LGA u različitim danima u tjednu
+# novi stupac nazovite 'MeanArrDelay'
+# ispis poredajte po vremenu kašnjenja silazno
+filter(hflights, Dest %in% c('LAX', 'JFK', 'LGA')) %>% group_by(DayOfWeek, Dest) %>% 
+summarise(MeanArrDelay = round(mean(ArrDelay, 
+         na.rm = T) , 2)) %>%
+         ungroup() %>% arrange(desc(MeanArrDelay))
+
+```
+
+
+## ZADATAK 11.10 - složeni upiti (2)
+
+```{r}
+# u zadacima koji slijede zamislite da ste prvo napisali
+# "vlastitu" funkciju koja pronalazi najčešću kategoriju:
+mostFreqValue <- function(x) table(x) %>% sort(decreasing = T) %>% names %>% `[`(1)
+
+
+# u tablici `hflights` podijelite vrijeme kašnjenja 
+# u dolasku u 10 kategorija uz pomoć funkcije `ntile`
+# novi stupac nazovite `ArrDelayCatId`
+# za svaku tu kategoriju ispišite identifikator 
+# kategorije, ukupan broj letova unutar kategorije,
+# minimalno i maksimalno vrijeme kašnjenja u dolasku 
+# te koja zrakoplovna luka se najčešće 
+# pojavljuje u toj kategoriji
+mutate(hflights, ArrDelayCatId = ntile(ArrDelay, 10)) %>% 
+group_by(ArrDelayCatId) %>% summarise(totalFlights = n(), minArrDelay = min(ArrDelay), maxArrDelay = max(ArrDelay), mostFreqDest = mostFreqValue(Dest))
+
+
+# ponovite prethodni primjer ali umjesto funkcije 
+# `ntile` isprobajte funkciju `cut`
+mutate(hflights, ArrDelayCat = cut(ArrDelay, 10)) %>% 
+group_by(ArrDelayCat) %>% summarise(totalFlights = n(), minArrDelay = min(ArrDelay), maxArrDelay = max(ArrDelay), mostFreqDest = mostFreqValue(Dest))
+
+```
+
+
+
+## Spajanje podatkovnih okvira uz join funkcije
+
+"Spajanje" tablica predstavlja kombiniranje redaka iz dva ili više podatkovnih okvira u jedinstveni podatkovni okvir.
+
+Postoje različite vrste spajanja, a jedno od najkorisnih je "prirodno spajanje" gdje retke okvira spajamo u ovisnosti o vrijednostima "zajedničkih stupaca". Paket `dplyr` za ovo nudi funkciju `inner_join`:
+
+```{r, eval = F}
+inner_join(df1, df2, by("s1" = "s2"))
+```
+
+Ukoliko stupac kojeg koristimo ima isto ime u obje tablice možemo navesti samo ime tog stupca (ili znakovni vektor više stupaca ako spajamo preko tzv. "kompozitnog" stranog ključa), ili taj parametar potpuno ispustiti (ako su stupci prema kojima provodimo spajanje jedini stupci čiji se nazivi poklapaju).
+
+## Ogledni podatkovni okviri
+
+Kako bi prikazali spajanje poslužiti ćemo se sljedećim "malim" podatkovnim okvirima:
+
+```{r}
+# inicijalizacija podatkovnih okvira `korisnik` i `mjesto`
+
+korisnik <- data.frame( 
+   id = c(1:3), prezime = c("Ivic", "Peric", "Anic"),
+   pbrBoravista = c(10000, 31000, 10000))
+
+mjesto <- data.frame(pbr = c(10000, 21000, 31000), 
+      naziv = c("Zagreb", "Split", "Osijek"))
+
+```
+
+## Prirodno spajanje
+
+
+gdje su `df1` i `df2` podatkovni okviri koje spajamo, a nizovi znakova *"s1"* i *"s2"* označavaju imena stupaca "lijevog" i "desnog" okvira prema kojima provodimo spajanje (uočite samo jedan znak jednakosti!). Ukoliko stupac kojeg koristimo ima isto ime u obje tablice možemo navesti samo ime tog stupca (ili znakovni vektor više stupaca ako spajamo preko tzv. "kompozitnog" stranog ključa), ili taj parametar potpuno ispustiti (ako su stupci prema kojima provodimo spajanje jedini stupci čiji se nazivi poklapaju).
+
+## ZADATAK 11.11 - prirodno spajanje
+
+```{r}
+# stvorite okvir `korisnikMjesto` koji će biti rezultat
+# prirodnog spajanja okvira `korisnik` i `mjesto`
+
+korisnikMjesto <- inner_join(korisnik, mjesto, by = c("pbrBoravista" = "pbr"))
+
+# ispišite okvir `korisnikMjesto`
+korisnikMjesto
+
+```
+
+
+## Vanjsko prirodno spajanje
+
+Vanjsko prirodno spajanje radi slično "običnom" prirodnom spajanju, osim što obzervacije koje nemaju svojeg "para" u drugoj tablici mogu ostati u konačnom okviru, uparene sa `NA` vrijednostima. 
+
+U ovisnosti o tome koje obzervacije želimo zadržati gledano okvire koje spajamo, imamo "lijevo" vanjsko spajanje (funkcija `left_join`), "desno" vanjsko spajanje (funkcija `right_join`) i "puno" vanjsko spajanje (funkcija `full_join`).
+
+## ZADATAK 11.12 - vanjsko spajanje
+
+```{r}
+# stvorite okvir `korisnikMjesto2` koji će biti rezultat
+# prirodnog spajanja okvira `korisnik` i `mjesto`
+# ali će zadržati sve retke iz tablice 'mjesto`
+korisnikMjesto2 <- right_join(korisnik, mjesto, by = c("pbrBoravista" = "pbr"))
+
+
+korisnikMjesto2 %>% arrange(id)
+# ispišite okvir `korisnikMjesto2`
+# retke poredajte po identifikatoru korisnika
+
+```
+
+
+
+
+

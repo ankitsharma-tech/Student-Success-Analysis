@@ -1,0 +1,927 @@
+---
+title: "12 vizualizacija podataka"
+author: ""
+date: ""
+output:
+  html_document: default
+---
+
+
+
+```{r include=FALSE}
+library(tidyverse)
+library(gridExtra)
+library(GGally)
+knitr::opts_chunk$set(results = 'hold')
+```
+
+***
+
+## Zašto vizualizacija?
+
+Postoje dva osnovna razloga za vizualizaciju podataka:
+
+- istraživanje podataka (eksploratorna analiza)
+- komunikacija rezultata (izvještavanje)
+
+
+##  Eksploratorna analiza podataka 
+
+Eksploratorna analiza podataka - EDA (engl. *exploratory data analysis*): proces analize podatkovnog skupa s ciljem upoznavanja s podacima i donošenjem određenih zaključaka.
+
+
+- osnovni cilj eksploratorne analize
+    - odgovoriti na **pitanja** koje smišlja sam analitičar
+    - bitna kreativnost i znatiželja; analitičar ima aktivnu ulogu, nije pasivan promatrač podataka
+    - pitanja se najčešće tiču **varijabilnosti** podataka i **odnosa** između varijabli
+    
+
+- često se identificiraju tri faze procesa:
+    - transformacija podataka (engl. *data wrangling*)
+    - vizualizacija podataka
+    - izrada modela
+- ove tri faze nisu slijedne već cirkularne i često se međusobno prožimaju
+
+## Eksploratorna analiza podataka (2)
+
+1. Transformacija podataka 
+     - već smo upoznali učenjem paketa `tidyr`, `dplyr` ...
+2. Vizualizacija podataka 
+    - paketi `base`, `grid`, `lattice`, `ggplot2`...
+    - tema ove lekcije
+3. Modeliranje podataka 
+    - stvaranje sažetih, konciznih reprezentacija podataka kroz matematičke (i druge modele) 
+    - izrada prediktivnih i deskriptivnih modela
+    - eksploatacija modela za donošenje odluka
+
+## Vizualizacija podataka u jeziku R
+
+- R se često koristi kao "vizualizacijski alat" 
+     - brojne mogućnosti za stvaranje profesionalnih, vizualno atraktivnih i lako interpretabilnih grafova.
+
+- osnovna podrška za vizualizaciju - tzv. `base plotting` sustav
+     - temelji se na generičkoj funkciji `plot`
+     - ukratko - gotovo svaku popularniju klasu proslijedimo navedenoj funkciji što će često rezultirati kompetentnom vizualnom reprezentacijom
+    
+
+## ZADATAK 12.1 - funkcija `plot`
+
+```{r, echo = T}
+x <- 1:50
+# proslijedite `x` i `x*x` funkciji `plot`
+plot(x,x*x)
+
+```
+
+
+
+## Prednosti i nedostaci funkcije `plot`
+
+Prednosti:
+
+- jednostavno, brzo i učinkovito rješenje
+- univerzalnost primjene
+
+Nedostaci:
+
+- grafu se mogu dodavati stvari, ali ne i modificirati
+- složenost naglo raste sa porastom zahtjeva nad vizualizacijom
+
+## Dodatni vizualizacijski paketi
+
+Paket `grid`
+
+- bogatiji skup funkcija od osnovne podrške
+- nema podršku za "statistike" tako da je često prije vizualizacije potrebno "ručno" računanje vrijednosti koje želimo prikazati
+
+<hr>
+
+Paket `lattice`
+
+- popularan za stvaranje tzv. "uvjetnih" ("facetiranih") grafova
+- prilično autonoman, npr. ima podršku za automatsko stvaranje legendi i sl.
+- nije zasnovan na formalnom modelu, teško proširivanje novim funkcionalnostima
+
+
+## Paket `ggplot2`
+
+- jedan od (općenito!) najpopularnijih R paketa
+    - https://www.rdocumentation.org/trends
+    
+- zasnovan na tzv. "grafičkoj gramatici" (engl. *grammar of graphics*)
+
+- temelji se na jasno definiranom formalnom modelu
+
+- krivulja učenja inicijalno nešto strmija
+
+## Paket `ggplot2` (2)
+
+
+- odlična podrška za stvaranje širokog spektra vizualizacija na osnovu koncizne, jasne i sažete sintakse 
+
+- omogućuje lako proširenje dodatnim funkcionalnostima
+
+- reimplementiran i u drugim programskim jezicima (paket `ggplot` u *Python-u*, paket `gramm` u *Matlab*-u)
+
+
+## Grafička gramatika i paket `ggplot2`
+
+Grafička gramatika (engl. *grammar of graphics*) nam daje sljedeće:
+
+* principe koji omogućuju stvaranje i interpretaciju kompleksnih vizualizacija
+* naputke što predstavlja "dobro oblikovanu" ili "kvalitetnu" vizualizaciju
+
+Grafove gledamo kao svojevrsne "rečenice" čije razumijevanje ovisi o tome kako pojedine komponente uklopiti u jasnu, razumljivu cjelinu.
+
+Naputak - graf gledati kao sumu "komponenti" od kojih svaka ima svoju ulogu i doprinosi konačnom rezultatu.
+
+* gramatička ispravnost nije garancija kvalitetne rečenice!
+
+
+## Grafička gramatika i paket `ggplot2` 
+
+Za početak, tri osnovne komponente:
+
+1. **podaci** (koje želimo vizualizirati)
+2. **estetike** (mapiranja podataka na elemente grafa)
+3. **geometrije** (grafička reprezentacija podataka na grafu)
+
+<hr>
+`graf = podaci + mapiranje + geometrija `
+<hr>
+
+## **Podaci** <font color = "#DDDDDD">/ Estetike / Geometrija</font>
+
+Podatkovni skup je ključna komponenta grafa, predstavlja "ono što želimo vizualizirati".
+
+Podaci su neovisni od ostatka procesa vizualizacije, budući da se isti principi vizualizacije mogu primjeniti nad različitim podatkovnim skupovima).
+
+   - ali: karakteristike podatkovnog skupa često direktno utječu na odabir daljnjih koraka.
+  
+<hr> 
+
+Primjer: podatkovni skup `mtcars`:
+    
+```{r, echo = F}
+head(mtcars)
+```
+
+## <font color = "#DDDDDD">Podaci / </font>Estetike <font color = "#DDDDDD">/ Geometrija</font>
+
+Pojam "estetika" nema veze sa "znanosti o lijepom", ovdje se radi o odabiru kako ćemo na grafu prikazati (mapirati) pojedini stupac.
+
+Uobičajeni princip: 
+
+   - Kartezijev koordinatni sustav
+   - osi *x* i *y* kao "osnovne estetike"
+   
+<hr>
+
+Na primjer, za podatkovni skup `mtcars` odlučujemo:
+
+`      wt -> os x`
+
+`     mpg -> os y`
+   
+## <font color = "#DDDDDD">Podaci / </font>Estetike <font color = "#DDDDDD">/ Geometrija</font>
+
+
+Osi koordinatnog sustava nisu jedine estetike, ovisno o tome kakav graf crtamo estetike mogu biti:
+
+- boja 
+- oblik
+- prozirnost
+- veličina
+- tip uzorka (npr. način crtkanosti linije)
+- itd.
+
+Estetiku možemo interpretirati i kao "ono što se objašnjava legendom", pri čemu i osi *x* i *y* možemo smatrati svojevrsnim legendama.
+
+## <font color = "#DDDDDD">Podaci / Estetike / </font> Geometrija</font>
+
+- "Geometrija" je zapravo "opis kako nešto nacrtati na grafu", tj. sam način vizualne reprezentacije.
+
+- To je ono što često zovemo "vrstom" grafa npr. "točkasti graf" (engl. *scatterplot*), linijski graf, stupčasti graf (engl. *bar chart*), histogram itd.
+
+```{r, echo = F, fig.height = 3.5}
+g1 <- ggplot(mtcars, aes(hp, mpg)) + geom_point(shape = 8, col = "dark red") + scale_x_continuous(name = NULL) + scale_y_continuous(name = NULL)
+g2 <- ggplot(mtcars, aes(wt)) + geom_histogram(bins = 15, fill = "dark blue", alpha = 0.5, color = 'black') + scale_x_continuous(name = NULL) + scale_y_continuous(name = NULL)
+grid.arrange(g1, g2, ncol=2)
+```
+
+
+## <font color = "#DDDDDD">Podaci / Estetike / </font> Geometrija</font>
+
+
+- Svaka geometrija definira svoje parametre koji se mogu povezati sa estetikama (mapiranjima).
+
+- npr. kod točkastog grafa pored koordinate svake točke možemo birati oblik "točke", boju, prozirnost itd.
+- ako je parametar povezan sa estetikom onda će ovisiti o vrijednosti varijable (npr. boja opisuje vrijednost neke kategorije), ako ne onda je fiksiran na razini grafa (npr. želimo "crvene" točke)
+
+
+## ZADATAK 12.2 - upoznavanje sa podatkovnim skupom `mtcars`
+
+Koristiti ćemo podatkovni skup `mtcars` koji dolazi sa jezikom R (paket `datasets`). Podatkovni skup možemo učitati u globalnu okolinu uz pomoć funkcije `data`.
+
+```{r, echo = T}
+
+# Učitajte podatkovni skup `mtcars` u globalnu okolinu
+mtcars <- mtcars
+
+# proučite okvir `mtcars`  (head, glimpse, ?...)
+head(mtcars)
+glimpse(mtcars)
+```
+
+
+## Crtanje prvog `ggplot2` grafa
+
+Odabrani podatkovni skup `mtcars` ima 32 obzervacije i 11 varijabli (sve numeričkog tipa). Zamislimo da želimo vizualizirati odnos dvije varijable, npr. potrošnju (`mpg`, koja predstavlja broj milja koliko auto prijeđe na jedan galon benzina) i težinu (`wt`, izraženu u tisućama funti). 
+
+Možemo odabrati sljedeći način mapiranja:
+
+* težina automobila (`wt`) na *x* os grafa
+* potrošnja (`mpg`) na *y* os grafa
+
+
+
+## Crtanje prvog `ggplot2` grafa
+
+
+```{r}
+ggplot() + 
+layer( data = mtcars,                      # 1. podaci
+       mapping = aes(x = wt, y = mpg),     # 2. mapiranja / estetike
+       geom = "point",                     # 3. geometrija
+       stat = "identity",                  # za sada zanemariti
+       position = "identity")              # za sada zanemariti
+```
+
+## Crtanje prvog `ggplot2` grafa
+
+Obično ne koristimo funkciju `layer` već kombinaciju funkcija `ggplot` (u kojoj postavimo "zajedničke" parametre podataka i estetika) te odabrane pomoćne `geom_X` funkcije.
+
+```{r}
+ggplot(mtcars, aes(x = wt, y = mpg)) + geom_point()
+```
+
+
+## ZADATAK 12.3 - `shape` estetika 
+
+Dodajmo još jednu varijablu u prikazani graf uz pomoć nove estetike - oblika točaka.
+
+```{r}
+# faktorizirajte varijablu `cyl
+mtcars$cyl
+mtcars$cyl <- factor(mtcars$cyl)
+mtcars$cyl <- factor(mtcars$cyl, labels = c("automatic", "manual"))
+mtcars$cyl <- order(mtcars$cly)
+mtcars$gear <- order(mtcars$gear)
+mtcars$gear <- order(mtcars$gear)
+# stvorite graf ovisnosti `mpg` o `wt`
+# uz mapiranje `cyl` varijable na `shape` estetiku
+
+ggplot(mtcars, aes(x = wt, y = mpg, color = cyl, shape = cyl)) + geom_point()
+
+```
+
+
+
+
+## ZADATAK 12.4 - `color` estetika 
+
+Pogledajmo sada estetiku bojr - tj. `color` estetiku.
+
+```{r}
+# stvorite graf ovisnosti `mpg` o `wt`
+# ovaj put mapirajte `cyl` varijable na `color` estetiku
+
+```
+
+
+
+
+## ZADATAK 12.5 - kombiniranje estetika
+
+Istu varijablu slobodno možemo mapirati na više estetika.
+
+```{r}
+# ponovite isti graf, ali varijablu `cyl` mapirajte
+# i na `color` i na `shape` estetiku
+ggplot(mtcars, aes(x = wt, y = mpg, color = cyl, shape = cyl)) + geom_point()
+```
+
+
+
+
+## Preimenovanje osi, legende, dodavanje naslova
+
+Ukoliko želimo, uz pomoć funkcije `labs` lako primenujemo osi ili legende te dodajemo naslov našem grafu. Sintaksa izgleda ovako:
+
+`ggplot(... ) + ...`
+
+`... + labs(x = "x os", y = "y os", ...`
+
+`    title = "Naslov")`
+
+## ZADATAK 12.6 - funkcija `labs`
+
+
+```{r}
+# na sljedećem grafu preimenujte osi i legendu
+# te dodajte adekvatni naslov (najbolje nešto što objašnjava graf)
+ggplot(mtcars, aes(x = wt, y = mpg, color = cyl, shape = cyl)) + geom_point() + labs (x = "tezina auta (lbs)", y = "potrošnja (milja/galon)")
+```
+
+
+## Fiksni parametri geometrije
+
+Estetike tj. mapiranja direktno utječu na parametre geometrije, tj. oni vise o vrijednostima varijabli koje mapiramo na njih. Ukoliko želimo "fiksirati" parametre geometrije, dovoljno ih je navesti kao parametre geometrijskog sloja sa pripadajućim vrijednostima (ali NE unutar funkcije `aes`!).
+
+<hr>
+Primjer sintakse:
+
+`ggplot(...) + .... `
+
+` + geom_point(color = "blue")`
+
+<hr>
+Primjer KRIVE sintakse (mapira riječ "blue" na estetiku 'color'!):
+
+
+`ggplot(...) + .... `
+
+` + geom_point(aes(color = "blue"))`   
+
+
+<hr>
+
+## ZADATAK 12.7 - fiksni parametri geometrije
+
+```{r}
+# nacrajte graf ovisnosti maksimalne brzine o težini automobila
+# koristite geometriju točke
+# obojite točke plavom bojom
+
+ggplot(mtcars, aes(x = wt, y = mpg)) + geom_point(aes(color="blue"))
+
+```
+
+
+
+
+
+## ZADATAK 12.8 - dodavanje linijskog sloja
+
+```{r}
+# budući da stalno koristimo istu "osnovicu" grafa možemo ju
+# pohraniti u zasebnu varijablu npr. imena `graf`
+
+graf <- ggplot(mtcars, aes(x = wt, y = mpg)) 
+
+# dodajte varijabli `graf` geometriju točaka a potom linijsku geometriju
+graf + geom_point() + geom_smooth()
+```
+
+
+
+## Aspekt statistike
+
+**Statistika** je aspekt grafa koji automatski provodi dodatne izračune nad podacima prije same vizualizacije. Izračuni su najčešće agregacije (iako ne uvijek!). Neke češće korištene statistike su:
+
+* `count` - prebrojavanje pojava (za kategorijske varijable)
+* `bin` - raspoređivanje pojava u ladice i prebrojavanje (za kontinuirane varijable)
+* `smooth` - "zaglađivanje" tj. "usrednjenje" korištenjem odabrane metode 
+    * najčešće `lm` za linearno ili `loess` za zakrivljeno zaglađivanje
+* `unique` - uklanjanje duplikata
+* `identity` - direktno preslikavanje, tj. "ostavljanje kako jest"
+
+
+
+Paket `ggplot2` nudi pomoćne funkcije za izračun statistika koje izgledaju ovako: `stat_<ime_statistike>`
+
+
+
+
+## ZADATAK 12.9 - funkcija `stat_smooth` i metoda `lm`
+
+```{r}
+# dodajte geometriju točaka na varijablu `graf`
+# te potom dodatni sloj sa krivuljom zaglađivanja
+# koristite funkciju `stat_smooth` uz parametar `method` 
+# postavljen na `lm` (linearno zaglađivanje)
+graf + geom_point() + geom_smooth(method = lm)
+```
+
+
+
+## ZADATAK 12.10 - funkcija `stat_smooth` i metoda `loess`
+
+```{r}
+# ponovite postupak ali metodu zaglađivanja
+# postavite na `loess` 
+graf + geom_point() + stat_smooth(method = 'loess')
+```
+
+
+
+## ZADATAK 12.11 - `group` estetika
+
+```{r}
+# stvorite još jednom isti graf ali sloju zaglađivanja
+# dodajte estetiku `group` postavljenu na `cyl`
+# Što smo ovime postigli?
+graf + geom_point() + stat_smooth(aes(group= cyl),method = 'loess')
+```
+
+
+
+## `group` estetika
+
+- kao što smo vidjeli, `group` estetikom možemo natjerati graf da izračunava statistike zasebno za podgrupe obzervacija, slično kao što radi `group_by` u paketu `dplyr` (ili u SQL-u!)
+
+- ponekad će `ggplot` automatski grupirati obzervacije (npr. ako smo već postavili neku kategorijsku varijablu na estetiku boje); ukoliko želimo da se statistike naknadno računaju za cijeli skup, možemo postaviti `group` estetiku na broj `1` što zapravo znači "za ovaj sloj sve obzervacije su jedna grupa"
+
+## Povezanost aspekata statistike i geometrije
+
+- u pravilu određene geometrije prirodno koriste "svoje" statistike 
+    - npr. stupčasti graf prebrojava pojave pojedinih kategorija)
+    
+- u praksi to znači da za vizualizaciju "statističkih" slojeva možemo odabrati `geom` funkciju i opcionalno podesiti njezin `stat` parametar ili `stat` funkciju uz opcionalno podešavanje `geom` parametra
+    - najčešće parametre ne diramo jer je *default*-ni parametar upravo onaj koji nam treba
+    - primjer: funkcije `geom_bar` i `stat_count`
+
+
+## ZADATAK 12.12 - stupčasti graf
+```{r}
+# nacrtajte stupčani graf varijable `cyl` tablice `mtcars` 
+# isprobajte funkcije `geom_bar` i `stat_count`
+# ima li razlike?
+
+ggplot(mtcars, aes(x=cyl)) + geom_bar()
+
+```
+
+
+
+## ZADATAK 12.13 - histogram
+```{r}
+# nacrtajte histogram varijable `wt` tablice `mtcars`
+# varijablu podijelite jednoliko u četiri ladice
+# koristite funkciju `geom_histogram`
+
+ggplot(mtcars, aes(x=wt)) + geom_histogram(bins = 7)
+
+```
+
+
+
+## Kako radi aspekt statistike?
+
+- aspekt statistike zapravo radi "privremeni" podatkovni okvir u kojem se izvršavaju određeni izračuni
+    - slično postupku kojeg bi sami radili uz pomoć naredbi `group_by` i `summarise` paketa `dplyr`
+    
+- nove varijable koje se pojavljuju u ovom podatkovnom okviru mogu se naći u dokumentaciji
+    - npr. `stat_bin` stvara varijable `count`, `ncount`, `density` i `ndensity`
+    
+- "glavna" varijabla automatski se mapira na estetiku `y`, iako po želji to možemo izmjeniti
+    - dovoljno je ručno postaviti estetiku `y` na odabranu varijablu kojoj smo stavili prefiks i sufiks `..` npr.
+    
+           ` aes(x = wt, y = ..ndensity..)`
+
+## ZADATAK 12.14 - histogram / `ncount`
+```{r}
+# nacrtajte histogram varijable `wt` tablice `mtcars`
+# težine podijelite jednoliko u četiri ladice
+# koristite funkciju `geom_histogram`
+# za agregacijsku varijablu postavite `ncount` 
+ggplot(mtcars, aes(x=wt, y= ..ncount..)) + geom_histogram(bins = 7)
+
+```
+
+
+
+## ZADATAK 12.15 - `fill` estetika u histogramu
+
+```{r}
+# nacrtajte histogram varijable `wt`, uz dodanu varijablu `cyl` na estetic i `fill`
+ggplot(mtcars, aes(x=wt, y= ..ncount.., fill = cyl)) + geom_histogram(bins = 7)
+```
+
+
+## Aspekt pozicije
+
+- u prethodnom primjeru smo zapravo izračunali zaseban "stupić" za svaku kombinaciju broja cilindara i kategorije težine vozila
+
+- kako bismo ovo mogli prikazati na dvodimenzionalnom histogramu, stupiće smo morali "repozicionirati"
+
+- `ggplot2` je u ovom slučaju automatski postavio aspekt `position` na `stack`, tj. slaganje stupića jedan na drugi
+   - postavkom pozicijskog aspekta na npr. `dodge` stupići bi se nacrtali jedan pored drugog
+   
+- dakle, **pozicijski aspekt** će repozicionirati određene aspekte geometrije zbog jasnoće prikaza
+
+
+## ZADATAK 12.16 - pozicijski aspekt `dodge`
+
+
+```{r}
+# nacrtajte opet histogram varijable wt, ali pozicijski aspekt `position` postavite na `"dodge"`
+ggplot(mtcars, aes(x=wt, fill = cyl)) + geom_histogram(bins = 4, position = 'dodge')
+
+```
+
+
+## ZADATAK 12.17 - pozicijski aspekt `identity`
+
+
+```{r}
+# nacrtajte isti histogram uz pozicijski aspekt postavljen na `"identity"`
+# postavite `alpha` parametar geometrije na 0.4 zbog jasnijeg prikaza
+ggplot(mtcars, aes(x=wt, fill = cyl)) + geom_histogram(bins = 4, position = 'identity', alpha = 0.5)
+
+```
+
+
+## ZADATAK 12.18 - pozicijski aspekt `fill`
+
+
+```{r}
+# konačno, nacrtajte isti histogram uz pozicijski aspekt `"fill"`
+# postavite parametar geometrije `color  na "Black" radi ljepšeg prikaza
+# objasnite rezultat! 
+ggplot(mtcars, aes(x=wt, fill = cyl)) + geom_histogram(bins = 4, alpha = 0.5, color = "Black", position = 'fill')
+
+```
+
+
+## Pozicijski aspekt `jitter`
+
+- vrlo često se događa da kod prikaza većeg broja obzervacija na grafu one "preklapaju" jedna drugu
+
+- pozicijski aspekt `jitter` dodaje "šum" obzervacijama kako bi se vizualno dao bolji dojam broja obzervacija na određenom području (ovo dobro radi za manje i srednje velike podatkovne skupove)
+
+- postoji posebna funkcija `geom_jitter` koja je zapravo inačica funkcije `geom_point` sa unaprijed dodanim `jitter` pozicijskim aspektom, intenzitet kojeg možemo regulirati parametrom `width`
+
+## ZADATAK 12.19 - pozicijski aspekt `jitter`
+
+```{r}
+df <- data.frame( x = c(rep(1, 90), rep(2, 9), 3),
+                  y = c(rep(1, 70), rep(2, 25), rep(3, 5)))
+
+# prikažite okvir df uz pomoć `scatterplot` grafa, tj. točkaste geometrije
+```
+
+
+
+## ZADATAK 12.20 - pozicijski aspekt `jitter`
+
+```{r}
+# prikažite isti graf, ali umjesto `geom_point` upotrijebite
+# pomoćnu funkciju `geom_jitter` koja ima ugrađen `jitter` pozicijski aspekt
+# postavite `width` i `height` parametre na 0.3 (30% dodanog šuma)
+# dodatno postavite `color` parametar geometrije na "blue" 
+# i `alpha` parametar ("prozirnost") na 0.4 
+```
+
+
+## Spremanje grafa u datoteku
+
+- dva najčešća formata - `pdf` (vektorski) i `png` (rasterski)
+    
+- `ggplot2` nudi vrlo zgodnu funkciju `ggsave` koja sprema zadnje nacrtani graf u datoteku
+    - format zapisa funkcija samostalno zaključuje uz pomoć ekstenzije u imenu datoteke u koju snimamo
+    
+
+## ZADATAK 12.21 - Spremanje grafa u datoteku
+
+```{r}
+# spremite sljedeći graf u datoteke `figure1.pdf`i `figure1.png`
+ggplot(mtcars, aes(x = hp, y = mpg, col = as.factor(cyl))) + geom_point() + 
+geom_smooth(aes(x = hp, y = mpg), method = 'loess', linetype = 4, color = "grey", se = F, inherit.aes = F) +
+labs(x = "broj konjskih snaga", y = "potrošnja", col = "broj cilindara")
+```
+
+
+
+##  Grafička gramatika i paket `ggplot2` (ponavljanje)
+
+Grafovi koriste **podatkovni skup** te stupce uz pomoć **estetika** mapiraju na određene vizualizacijske aspekte. Potom uz pomoć **geometrija** crtamo određene elemente grafova, s tim da ti elementi mogu biti povezani sa estetikama ili definirani fiksno. **Statistike** nam omogućuju da prije vizualiziranja izračunamo neke sumarne (ili neke druge) statistike originalnih podataka, a **pozicijom** možemo presložiti vizualne elemente kako bi dodatno prikazali neki odnos ili svojstvo unutar podataka.
+
+
+
+## Aspekt skale
+
+**Skale** su aspekt koji kontrolira način kako se to mapiranje provodi, tj. metodu preslikavanja samih podataka na vizualne elemente estetike na koju se oni preslikavaju. U slučaju koordinatnih osi tu se radi o preslikavanju numeričkih ili kategorijskih vrijednosti na konkretne udaljenosti na samim osima, dok npr. kod estetike boje skala odlučuje koja boja označava koju vrijednost originalnih podataka.
+
+Ovaj aspekt je do sada uvijek bio implicitno prisutan, ali smo dopuštali `ggplot2` paketu da "odabere" *default*-ne vrijednosti za nas.
+
+##  Pomoćne funkcije `scale_`
+
+Kada radimo sa skalama, najčešće se koristimo ovim pomoćnim funkcijama (`*` predstavlja "ime estetike", kao npr. `x`, `y`, `color` itd.):
+
+- `scale_*_continuous` - za mapiranje kontinuiranih (numeričkih) vrijednosti
+- `scale_*_discrete` - za mapiranje diskretnih vrijednosti
+
+
+## Parametri `scale_` funkcija
+
+Svaka od ovih funkcija ima niz parametara koje možemo koristiti kako bi utjecali na postupak mapiranja. Npr. ako pogledamo dokumentaciju za `scale_x_continuous` možemo vidjeti da između ostalog možemo postaviti parametre:
+
+- `name` - ime skale koje ujedno postaje i naziv osi/legende
+- `breaks` - na kojim pozicijama se stavljaju crtice
+- `labels` - koje vrijednosti se ispisuju ispod crtica
+- `limits` - raspon vrijednosti koji će se nalaziti na osi
+- itd.
+
+Uočite da postoje dodatne pomoćne funkcije koje omogućuju kontrolu gore navedenih parametara i izvan `scale_` funkcije, npr. `labs` za imenovanje osi i legendi, `xlim` za ograničenje raspona na osi `x` i sl.
+
+
+
+## ZADATAK 12.22 - upoznavanje sa podatkovnim skupom `diamonds`
+
+
+```{r}
+# učitajte i proučite podatkovni okvir `diamonds`
+```
+
+
+
+
+
+
+## ZADATAK 12.23 - uzorkovanje skupa `diamonds`
+
+
+```{r}
+set.seed(1001)
+# stvorite okvir `diamondsSample` u koji ćete staviti
+# 5000 nasumičnih redaka iz okvira `diamonds`
+```
+
+
+
+
+## ZADATAK 12.24 - korištenje aspekta skale
+
+
+```{r}
+# "popravite" osi i legendu grafa koji prikazuje ovisnost veličine dijamanta, boje i cijene
+# - osi x i y nazovite "volumen u mm3" i "cijena u $"
+# - legendu nazovite "kvaliteta boje"
+# - os x ograničite od 0 do 500
+# - na osi y postavite crtice na 1000, 5000, 10000 i 20000
+# - kategorije kvalitete boje postavite na brojeve od 1 do 7 gdje 1 predstavlja "najbolju" boju
+ggplot(diamondsSample, aes(x*y*z, price, color = color)) + geom_point(alpha = 0.4) 
+```
+
+
+
+
+## Logaritamska skala
+
+Vrlo često se događa da na grafovima uočavamo tzv. "eksponencijalni trend", tj. da nas ovisnost jedna varijable u drugoj podsjeća na eksponencijalnu funkciju.
+
+Ako želimo eksponencijalni trend pretvoriti u linearni, možemo pokušati logaritmirati podatke (što će onda utjecati na prikazane vrijednosti). Umjesto da diram podake, `ggplot2` nam nudi opciju da umjesto stadnardne koristimo logaritmiranu (ili neku drugu) skalu. Konkretno, umjesto funkcije `scale_*_continuous` možemo odabrati:
+
+- `scale_*_log10` - logaritmira skalu po bazi 10
+- `scale_*_reverse` - "obrće" skalu s desna na lijevo
+- `scale_*_sqrt` - "korijenuje" vrijednosti skale
+
+
+## ZADATAK 12.25 - logaritamska skala
+
+
+```{r}
+# logaritmirajte cijenu dijamanta u prethodno izvedenom grafu
+ggplot(diamondsSample, aes(x*y*z, price, color = color)) + geom_point(na.rm = T, alpha = 0.6) +
+  scale_x_continuous(name = "volumen u mm3" , limits = c(0, 450)) +
+  scale_y_continuous(name = "cijena u $", breaks = c(1000, 5000, 10000, 15000)) +
+  scale_color_discrete(name = "kvaliteta boje", labels = 1:7)
+```
+
+
+
+## Skale za prilagodbu boja
+
+Estetike `color` i `fill` se vrlo često dodatno podešavaju uz pomoć skala. Za ovo imamo zgodne funkcije (dajemo primjere za `fill` estetike iako većina funkcija postoji i za `color`):
+
+- `scale_fill_brewer` - odabir jedne od unaprijed pripremljenih paleta boja namijenjenih prikazu diskretnih vrijednosti; imena paleta mogu se pogledati u dokumentaciji
+- `scale_fill_distiller` - prilagođava palete za diskretne vrijednosti kontinuiranim varijablama
+- `scale_fill_gradient` - odabir početne i konačne boje koje će se "prelijevati" jedna u drugu; koristimo za prikaz kontinuiranih vrijednosti
+- `scale_fill_gradient2`, `scale_fill_gradientn` - ako želimo više "prelijevanja"
+- `scale_fill_grey` - za crno bijele vizualizacije
+
+
+## ZADATAK 12.26 - prilagodba boja na grafu
+
+
+```{r}
+# podesite `fill` estetiku sljedećeg grafa korištenjem funkcije `scale_fill_brewer`
+# parametar `palette` postavite na jednu od sljedećih paleta:
+# Blues, BuPu, Greens, Greys, Oranges, OrRd, PuBu, PuRd, Purples, YlGn, YlOrRd
+# (još paleta možete naći u dokumentaciji)
+ggplot(diamondsSample, aes(x = x*y*z, fill = color)) + geom_histogram(bins = 30, na.rm = T) + 
+  xlim(0, 500)
+```
+
+
+
+## Aspekt koordinatnog sustava
+
+Aspekt **koordinatnog sustava** vrlo rijetko mijenjamo. Razlog tome je što u najvećem broju slučajeva želimo koristiti Kartezijev koordinatni sustav koji `ggplot` koristi po *default*-u. Ukoliko smatramo da naša vizualizacija zahtijeva nešto drugo - bilo da se radi o polarnom koordinatnom sustavu, ili želimo "izvrnuti" naš Kartezijev sustav na stranu, ili - što je posebno važno kod analize zemljopisnih podataka - želimo da naša vizualizacija prikazuje zemljopisnu kartu, možemo između ostalog koristiti sljedeće funkcije:
+
+- `coord_polar` - polarni koordinatni sustav
+- `coord_flip` - mijenja `x` i `y` osi
+- `coord_map` - koristi karte iz paketa `maps` i `mapproj`
+
+## ZADATAK 12.27 - "izvrnuti" i polarni koordinatni sustavi
+
+
+```{r}
+# pogledajte kako sljedeći graf izgleda u "izvrnutom" a kako u polarnom koordinatnom sustavu
+ggplot(diamondsSample, aes(x = x*y*z, fill = color)) + geom_histogram(bins = 30, na.rm = T) + 
+  xlim(40, 100) 
+```
+
+
+
+
+## Aspekt teme
+Konačno **aspekt teme grafa** nam omogućuje da utječemo na sve vizualne aspekte grafa koji nisu povezani s podacima. To znači da možemo birati boju i izgled pozadine, font i veličinu slova, margine, poravnavanja i još niz drugih parametara grafa. Tema nam daje iznimno detaljnu kontrolu nad izgledom grafa, a budući da se zapravo radi o objektu (klase `theme`), temu grafa možemo pohraniti i reciklirati za sve buduće vizualizacije. Isto tako, `ggplot2` nudi niz već unaprijed pripremljenih tema za korištenje i daljnju prilagodbu, a koje dohvaćamo uz skup pomoćnih funkcija od kojih su neke:
+
+- `theme_gray` - *default*-na tema
+- `theme_bw` - crno-bijele osi, pogodna za projiciranje grafova
+- `theme_classic` - "klasična" tema slična onoj koju producira `plot` funkcija
+- `theme_void` - "prazna" tema
+
+
+## ZADATAK 12.28 - izmjena teme grafa
+
+
+```{r}
+# promijenite temu sljedećem grafu na `theme_classic`
+ggplot(diamondsSample, aes(x = x*y*z, fill = color)) + geom_histogram(bins = 30, na.rm = T) + 
+  xlim(0, 500) 
+```
+
+
+## Izmjena pojedinih elemenata teme
+
+Često želimo promijeniti samo neki od aspekata grafa koji nije vezan uz podatke (npr. veličina ili orijentacija slova, izgled crtica na osima i sl.). Za ove stvari koristimo funkciju `theme` koja sadrži vrlo bogati niz parametara (pogledati dokumentaciju!). Neke od tih parametara su tzv. "elementi" teme (npr. `element_line`, `element_text`) koje namještamo pozivom pripadne funkcije unutar poziva funkcije `theme`, npr:
+
+```{r, eval = FALSE}
+# mijenjamo izgled naziva grafa 
+# (za obitelj fontova preporučeno koristiti `serif`, `sans` ili `mono`)
+... + theme( title = element_text(family = 'serif', face = 'bold.italic'))
+```
+
+## ZADATAK 12.29 - izmjena elementa teme grafa
+
+```{r}
+# promijenite orijentaciju slova na x osi tako da budu pod kutem od 45 stupnjeva
+ggplot(diamondsSample, aes(cut)) + geom_bar() 
+                                                                                
+```
+
+## Uvjetni (facetirani) grafovi
+
+Već smo se upoznali sa estetikom grupiranja, koja prije vizualizacije unutar skupa podataka radi podskupove po odabranoj varijabli te ih shodno tome na adekvatan način vizualizira. Također smo naučili da možemo raditi implicitna grupiranja uz pomoć estetika boje, oblika, veličine i sl. 
+
+Uvjetni (facetirani) grafovi rade na istom principu, ali razdvajanje po odabranoj varijabli (ili varijablama) radi se na način da se vizualizira više grafova koji se onda prikazuju jedan pored drugoga. Rezultatni grafovi prikazuju istu informaciju kao i estetika (implicitne ili eksplicitne) grupe, ali je ovako nešto lakše proučiti svaki podgraf zasebno.
+
+
+## Notacija statističkih formula
+
+Prije demonstracije kako radimo uvjetno grafove moramo objasniti pojam tzv. "notacije statističkih formula" (*statistical formula notation*). Ova notacija se često koristi u R-u, pogotovo kod treniranja raznih statističkih modela, a radi se zapravo o formalnoj notaciji međuovisnosti varijabli nekog podatkovnog skupa zamišljenoj na način da se može na što kraći i jednostavniji način zapisati i ugraditi u programski kod.
+
+Formule ćemo detaljnije obrađivati kasnije, a za sada ćemo pokazati samo vrlo jednostavan primjer. Ako želimo zapisati "y u ovisnosti o x-u", onda formula izgleda ovako:
+
+```{r, eval = F}
+y ~ x          # znači "y u ovisnosti o x-u"
+```
+
+ovo možemo čitati i kao "y kao funkcija od x" ili - u slučaju linearnih modela - "y  = ax + b". Dakle, znak tilda (`~`) zapravo znači "u ovisnosti o". 
+
+
+## Notacija statističkih formula (2)
+
+Prikažimo još neke jednostavnije oblike formula:
+
+```{r, eval = F}
+z ~ x + y  # z u ovisnost o x i y (plus ovdje nije aritmetičko zbrajanje!)
+y ~ .      # y u ovisnosti o "svim ostalim varijablama"
+. ~ y      # "sve ostale varijable" u ovisnosti o y
+~ y        # tzv. "jednostrana" formula, "u ovisnosti o y"
+
+```
+
+Zadnja dva primjera je malo teže matematički definirati no znaju se koristiti u pozivima funkcija za različite svrhe, većinom zbog jednostavnog zapisa i lake interpretacije.
+
+## Funkcije za stvaranje uvjetovanih grafova
+
+Postoji dva osnovna načina stvaranja uvjetnih grafova, a to je uz pomoć funkcija
+
+- `facet_grid` - za organizaciju "podgrafova" u mrežu tj. matricu
+- `facet_wrap` - za organizaciju "podgrafova" u jedan ili više redaka
+
+Funkciju `facet_grid` koristimo kad podskupove radimo po jednoj ili dvije kategorijske varijable. Rastavljanje po dvije varijable prirodno radi "matricu", dok rastavljanje po jednoj će napraviti redak ili stupac, što možemo kontrolirati formulom. Funkciju `facet_wrap` koristimo kada želimo rastaviti po jednoj varijabli, ali ne želimo da svi budu u jednom stupcu ili retku već ih želimo presložiti u više redaka (zato je i *wrap*, slično kao *word wrap* u uređivaču teksta koji prenosti tekst u drugi red).
+
+
+## ZADATAK 12.30 - funkcija `facet_grid`
+
+```{r}
+# reduciramo uzorak kako bi radili sa faktorima sa manjim brojem razina
+diamondsSample %>% filter(color %in% c("G", "H", "I", "J"),
+                  cut %in% c("Very Good", "Premium", "Ideal")) -> diamondsSample2
+
+# napravite uvjetni graf u ovisnosti o kombinaciji boje (`color`) i reza (`cut`)
+# koristite funkciju `facet_grid` i formulu kao parametar
+ggplot(diamondsSample2, aes(depth, fill = clarity)) + geom_histogram(bins = 5,  position = 'dodge')
+```
+
+
+## ZADATAK 12.31 - funkcija `facet_grid` (2)
+
+```{r, eval = F}
+# ponovite postupak, ali sada rastavite samo po boji
+# grafove organizirajte u stupac
+# koristite funkciju `facet_grid` i notaciju formule sa točkom
+ggplot(diamondsSample2, aes(depth, fill = clarity)) + geom_histogram(bins = 5,  position = 'dodge')
+```
+
+
+
+## ZADATAK 12.32 - funkcija `facet_wrap`
+
+```{r}
+# razdvojite sljedeći graf u ovisnosti o prozirnosti (`clarity`)
+# koristite funkciju `facet_wrap` i jednostranu formulu
+ggplot(diamondsSample, aes(x*y*z, price)) + geom_point() 
+```
+
+
+## Dodatni vizualizacijski paketi
+
+Ovime završavamo priču o gramatičkoj geometriji, njezinim aspektima i primjeni uz pomoć paketa `ggplot2`. Ovdje nisu ni približno objašnjenje sve mogućnosti ovoga paketa, zbog čega se snažno preporučuje dodanto čitanje dokumentacije i referenciranje na podsjetnik koji sadrži niz geometrija i opcija za koje u ovim lekcijama nije bilo mjesta. Također, ne treba zaboraviti na niz dodatnih paketa koji dodatno proširuju mogućnosti paketa `ggplot2`, a koje bi trebalo potražiti u ovisnosti o našim zahtjevima i željama glede vizualizacija koje želimo stvoriti za naše projekte podatkovne analize. Za inspiraciju zgodno je pogledati galeriju grafova i slika nastalih uz pomoć jezika R, a koja je dostupna <a href = "http://www.r-graph-gallery.com/all-graphs/">na ovoj poveznici </a>.
+
+
+
+## Grafovi u eksploratornoj analizi i izvještavanju
+
+Kod eksploratorne analize podataka često je glavni cilj - kvantiteta. Već je rečeno da se eksploratorna analiza svodi na traženje odgovora za niz pitanja koje analitičar postavlja vezano uz podatke. Estetika ovdje često nije bitna - glavno je da grafovi imaju dovoljno informacija da se kod naknadnog pregledavanja može ono što je predočeno staviti u odgovarajući kontekst. Analitičar će također često isprobavati različite kombinacije estetika, geometrija i statistika. 
+
+## Grafovi u eksploratornoj analizi i izvještavanju (2)
+
+
+
+```{r, eval = F}
+#library(GGally)  # ako nije učitan!
+ggpairs(data = mtcars[,1:6])
+```
+
+
+
+
+```{r, echo = F}
+#library(GGally)  # ako nije učitan!
+# ovaj isjecak se zapravo prikazuje buduci da nece imati stat_bin poruke
+# rjesenje sa https://github.com/ggobi/ggally/issues/184
+ggpairs(data = mtcars[,1:6], lower=list(combo=wrap("facethist", binwidth=0.8)))
+```
+
+
+
+
+## Grafovi u eksploratornoj analizi i izvještavanju (3)
+Kod izvještavanja s druge strane ključna je kvaliteta grafa u smislu jasnog i preglednog predstavljanja informacije. Graf mora jasno komunicirati informacije koje su njime predočene, uz pažljivo odabrana objašnjenja i pomno odabrano korištenje tzv. **metapodataka**, tj. dodatnog teksta i anotacija. Za stvaranje izvještajnih grafova preporučuje se koristiti dodatne `geom_text` slojeve za tekstualnim oznakama na odgovarajućim područjima grafa gdje one mogu najviše doprinijeti, a također i kreativno korištenje `geom_point`, `geom_hline`, `geom_vline`, `geom_rect` i sličnih geometrijskih slojeva koji će dodatno pojasniti određene segmente grafa. Isto tako, preporučuje se unaprijed pripremiti temu koju ćemo onda konzistentno primjenjivati na sve grafove.
+
+U velikom slučajeva grafovi u izvještajima su zapravo probrani i "uljepšani" grafovi dobiveni tijekom eksploratorne analize. No analitičar bi trebao posebnu pažnju posvetiti činjenici da se grafovi u izvještajima često rade za publiku koja je daleko manje upoznata sa podatkovnim skupom i raznim detaljnim saznanjima koje je analitičar dobio tijekom eksploratorne analize. Izvještajni grafovi stoga moraju biti orijentirani krajnjem korisniku, te s tim ciljem i pažljivo dizajnirani. Zbog toga se preporučuje da svi elementi grafa - uključujući i naslov, legende i sl. budu orijentirani komunikaciji informacije i razjašnjenju što graf prikazuje, a što je u skladu sa zaključcima koje publikacija iznosi.
+
+## Grafovi u eksploratornoj analizi i izvještavanju (4)
+
+Konačno, ponekad želimo zbog štednje prostora unutar jedne slike staviti više različitih grafova. Ovo obično radimo uz pomoć više zasebnih slika koje slažemo unutar sučelja kojeg koristimo za pisanje publikacije čiji su dio navedeni grafovi, no možemo i unaprijed pripremiti grafove uz pomoć paketa `gridExtra`. Između ostalog, ovaj paket nudi funkciju `grid.arrange` uz pomoć koje grafove slažemo u matricu s odabranim brojem redaka i stupaca.
+
+
+
+## Grafovi u eksploratornoj analizi i izvještavanju (5)
+
+```{r}
+#library(gridExtra)    # ukoliko je potrebno
+
+# grafove koje slažem u matricu pohranjujem u varijable
+g1 <- ggplot(diamondsSample, aes(x*y*z, price, color = color)) + geom_point(alpha = 0.6)
+g2 <-ggplot(diamondsSample, aes(x = x*y*z, fill = color)) + geom_histogram(bins = 30, na.rm = T) + 
+             scale_fill_brewer(palette = "Greens")
+g3 <- ggplot(diamondsSample, aes(x = cut)) + geom_bar(fill = "blue", alpha = 0.5)
+g4 <- ggplot(diamondsSample, aes(x = color, fill = clarity)) + geom_bar() + coord_polar()
+
+```
+
+## Grafovi u eksploratornoj analizi i izvještavanju (6)
+
+
+```{r}
+grid.arrange(g1, g2, g3, g4, nrow = 2, ncol = 2)
+```
+
+ 

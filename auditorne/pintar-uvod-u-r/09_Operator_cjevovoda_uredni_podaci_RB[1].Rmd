@@ -1,0 +1,480 @@
+---
+title: "9 Operator cjevovoda i uredni podaci"
+author: "Damir Pintar"
+date: "24. kolovoz 2017"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = 'hold')
+```
+
+***
+
+
+## Operator cjevovoda
+
+Pogledajmo sljedeći primjer: zamislimo da u jeziku R želimo stvoriti 100 nasumičnih realnih varijabli u rasponu [0,100], zaokružiti ih na dvije decimale, iz ovog skupa odabrati uzorak od 10 varijabli, izračunati aritmetičku sredinu uzorka i ispisati ga na zaslon. Jedno od mogućih programskih rješenja moglo bi biti sljedeće:
+
+```{r}
+set.seed(1234)  # (zbog ponovljivosti)
+
+# rješenje gornjeg primjera
+rez <- runif(100, 0, 100) # 100 nasumičnih varijabli iz uniformne razdiobe od 0 do 100
+rez <- round(rez,2)
+rez <- sample(rez, 10)
+rez <- mean(rez)
+rez
+```
+
+Ovakav kod ima dosta nepotrebnog ponavljanja - u svakom retku koristimo varijablu `rez` koja čuva međurezultate i operator pridruživanja pomoću kojeg pridružujemo nove rezultate varijabli `rez`. Alternativno, mogli smo sve obaviti u jednom retku.
+
+***
+
+## ZADATAK 9.1 - učahurene funkcije
+
+
+```{r}
+set.seed(1234)
+
+# ponovite gornji primjer, ali uz pomoć samo jednog retka programskog koda
+mean(sample(round(runif(100, 0, 100), 2), 10))
+
+```
+
+
+***
+
+
+Kako radi `%>%` operator? Vrlo jednostavno - postavimo ga nakon poziva neke funkcije i iza njega navedemo poziv druge funkcije u kojem mjesto rezultata prve naznačimo točkom. Ovo možemo raditi koliko god puta želimo, tj. ovisno koliko poziva "ulančavamo".
+
+```{r, eval = FALSE}
+h(g(f(x), y), z, w)                      # kod bez %>% operatora
+
+f(x) %>% g(., y) %>% h(., z, w)          # kod sa %>% operatorom
+
+```
+
+Ako je rezultat prethodne funkcije na prvom mjestu sljedeće funkcije, onda se točka (štoviše, cijeli taj argument) može izbaciti, tako da je sintaksa još kraća:
+
+```{r, eval = FALSE}
+
+f(x) %>% g(y) %>% h(z,w)                 # kod sa %>% bez korištenja točke
+
+```
+
+
+***
+
+
+## ZADATAK 9.2 - operator `%>%`
+
+
+```{r}
+set.seed(1234)
+
+# ponovo rješite prvi primjer uz pomoć %>% operatora
+runif(100, 0, 100) %>% round(2) %>% sample(10) %>% mean() %>% print()
+
+```
+
+
+***
+
+Krajnji rezultat našeg "lanca" funkcija možemo pohraniti uobičajenim načinom:
+
+```{r}
+suma <- 1:10 %>% sum   # rezultat se pohranjuje u varijablu 'suma'
+```
+
+ali je možda vizualno konzistentije koristiti "obrnuti" operator pridruživanja: `->`.
+
+```{r}
+1:10 %>% sum -> suma   # radi istovjetno gornjem primjeru
+```
+
+Uočite da u situacijama kada je rezultat prethodne funkcije jedini parametar sljedeće možemo izbaciti zagrade u potpunosti (dakle u gornjim primjerima `sum`, `sum()` ili `sum(.)` bi svi radili jednako).
+
+Pokušajmo sada kombinirati `%>%` operator i `lapply` na primjeru već viđenom u poglavlju o funkcijama iz porodice `apply`.
+
+***
+
+## ZADATAK 9.3 - funkcija `lapply` i operator `%>%`
+
+
+
+```{r}
+l <- list(a = 1:10, b = 10:20, c = 100:200)
+
+# stvorite matricu koja će sadržavati prvi i zadnji element svakog elementa liste
+# elementi moraju biti poredani po retcima
+# koristite funkcije lapply, unlist i matrix te %>% operator
+# rezultat spremite u varijablu `rez`
+rez <- l %>% lapply (function(x)(c(x[1], x[length(x)]))) %>% unlist %>% matrix (ncol=2, byrow=TRUE)
+# ispišite `rez`
+rez
+```
+
+## Operatori kao funkcije
+
+```{r}
+# svaki par naredbi jest ekvivalentan
+2 + 3
+`+`(2, 3)
+
+1 : 5
+`:`(1, 5)
+
+x <- c(1, 2, 3)
+`<-`("x", c(1,2,3))
+
+x[1]
+`[`(x, 1)
+
+```
+
+
+## ZADATAK 9.4 - Složenija uporaba operatora cjevovoda
+
+
+```{r}
+set.seed(1234)
+
+# "uredite" sljedeću naredbu uz pomoć operatora cjevovoda 
+matrix(table(sample(round(sqrt(sample(1:10000, 10000, replace = T))), 100))[1:9], 3, 3)
+1:10000 %>% sample(10000, replace = T) %>% sqrt %>% round %>% sample(100) %>% table %>% `[`(1:9) %>% matrix (3,3)
+```
+
+
+
+***
+### Funkcije *gather* i *spread*
+
+U radnoj mapi trebala bi se nalaziti datoteka `studenti.csv`. Učitajmo ju u radnu okolinu. Budući da je datoteka pohranjena uz pomoć UTF-8 kodiranja (budući da sadrži hrvatska slova), naredbi `read.csv` možete dodati i parametar `fileEncoding = "UTF-8"` kako bi dobili korektni ispis posebnih znakova.
+
+***
+
+## ZADATAK 9.5 - podatkovni skup `studenti`
+
+
+```{r}
+# učitajte podatke iz datoteke `studenti.csv` u varijablu `studenti`
+# ne zaboravite na parametar `stringsAsFactors`!
+
+studenti <- read.csv("studenti.csv", fileEncoding="UTF-8", stringsAsFactors = F)
+
+# upoznajte se sa podacima uz pomoć standardnih funkcija za tu svrhu
+# (names, sapply - class, str, head, summary ...)
+# u daljnim primjerima za ovaj postupak koristiti ćemo se izrazom "proučite okvir.."
+summary(studenti)
+str(studenti)
+head(studenti)
+```
+
+
+
+***
+
+## ZADATAK 9.6 - prilagodba parametara učitavanja podatkovnog skupa
+
+
+```{r}
+# ponovo učitajte podatke iz datoteke `studenti.csv` u varijablu `studenti`
+# naredbi `read.csv` dodajte parametar `na.strings` sa znakovnim nizom koji predstavlja NA
+
+studenti <- read.csv("studenti.csv", fileEncoding="UTF-8", stringsAsFactors = F, na.strings=NULL)
+
+# proučite okvir `studenti`
+str(studenti)
+head(studenti)
+```
+
+***
+
+Budući da su podaci u tablici zapravo skup ocjena, bilo bi pogodno preoblikovati tablicu tako da svaki redak upravo bude "ocjena koju je dobio neki student na nekom predmetu". Razmislite koje korake bi trebalo poduzeti da stvorimo takvu tablicu. Trebamo:
+
+- stvoriti kategorijsku varijablu `Predmet` koja bi kao razine imala nazive predmeta koji su trenutno stupci
+- stvoriti sve pripadne kombinacije student-predmet
+- popuniti kombinacije pripadajućom vrijednosti ocjene
+
+Ovaj postupak nije nemoguć ali zahtjeva dosta truda oko preoblikovanja podatkovnog okvira. Kako bi se ovaj postupak pojednostavio, možemo koristiti funkciju `gather` iz paketa `tidyr` koja obavlja upravo gore opisani postupak: ona "prikuplja" stupce u jedinstvenu varijablu i onda popunjava vrijednosti te varijable uz pomoć postojećih kombinacija naziv stupca / redak. Potpis funkcije izgleda ovako:
+
+```{r, eval = FALSE}
+gather(data, key, value, ..., na.rm = FALSE, convert = FALSE, factor_key = FALSE)
+```
+
+
+Detaljni opis funkcije možete dobiti pozivom naredbe `?gather`, a ovdje ćemo samo ukratko objasniti parametre:
+
+- `data` očito predstavlja naš podatkovni okvir
+- `key` predstavlja naziv novog stupca - kategorijske varijable kojeg stvaramo a (u našem slučaju `Predmet`); kako bi se olakšao posao programeru, ova funkcija ne zahtijeva da naziv stupca stavljamo u navodnike
+- `value` predstavlja naziv novog stupca - varijable sa vrijednostima (u našem slučaju `Ocjena`)
+- `...` predstavlja skup stupaca koje prikupljamo; možemo navesti samo nazive stupaca odvojene zarezima (navodnici također nisu potrebni) ili se koristiti skraćenom sintaksom `prvi_stupac:zadnji_stupac` (možemo i naznačiti samo "izbačene" stupce sa predznakom `-`)
+- `na.rm` opisuje da li želimo izostaviti stupce sa `NA`
+- `convert` će obaviti konverziju podataka ukoliko to smatramo potrebnim
+- `factor_key` nas pita želimo li faktorizirati novu varijablu koju stvaramo
+
+Obavimo ovu funkciju nad našim podatkovnim okvirom.
+
+***
+
+## ZADATAK 9.7 - funkcija `gather`
+
+
+```{r}
+# stvorite podatkovni okvir `ocjene` uz pomoć funkcije `gather` i okvira `studenti`
+ocjene <- gather(studenti, Predmet, Ocjena, Matematika.1:Algoritmi.1, na.rm = T, factor_key = T )
+
+# proučite okvir `ocjene`
+str(ocjene)
+head(ocjene)
+```
+
+
+***
+
+
+Funkcija koja radi inverzan posao od `gather` jest funkcija `spread`. Ona će podatke iz kombinacije kategorijskog stupca i vrijednosti "raširiti" tako da kategorije postaju nazivi stupaca a vrijednosti se "raspršuju" po odgovoarajućim stupcima.
+
+Potpis funkcije izgleda ovako:
+
+```{r, eval = FALSE}
+spread(data, key, value, fill = NA, convert = FALSE, drop = TRUE, sep = NULL)
+```
+
+Dokumentaciju ove funkcije lako dohvaćamo naredbom `?spread` a neke elemente već možemo lako prepoznati korištenjem znanja kako radi funkcija `gather`. Parametri koje možda treba dodatno pojasniti su:
+
+- `fill` koji opisuje koju vrijednost staviti kod "nepostojećih" kombinacija nakon "širenja"
+- `drop` koji opisuje da li treba raditi stupce za nepostojeće kategorije ako je stupac kojeg širimo faktoriziran
+- `sep` koji nam omogućuje da naziv stupca ne bude samo vrijednost kategorije već kombinacija naziva postojećeg kategoijskog stupca i vrijednosti (uz definirani separator)
+
+Pokušajmo uz pomoć ove naredbe "rekonstruirati" originalni podatkovni okvir `studenti`.
+
+***
+
+## ZADATAK 9.8 - funkcija `spread`
+
+
+```{r}
+# "raširite" podatkovni okvir `ocjene` uz pomoć naredbe `spread`
+# rezultat pohranite u okvir `studenti2`
+studenti2 <- spread(ocjene, Predmet, Ocjena)
+
+# proučite okvire `studenti` i `studenti2`
+head(studenti)
+head(studenti2)
+str(studenti)
+str(studenti2)
+```
+
+***
+U prethodnom primjeru demonstrirali smo inverznu funkcionalnost funkcija `gather` i `spread` ali narednom `spread` nismo postigli uredne podatke, samo smo se vratili na originalni okvir. Pogledajmo sada primjer gdje upravo naredbom `spread` "sređujemo" podatke.
+
+Učitajmo podatke iz datoteke `auti.csv` koja pohranjuje tehničke karakteristike određenih automobila.
+
+***
+
+## ZADATAK 9.9 - podatkovni skup `auti`
+
+
+```{r}
+# učitajte datoteku `auti.csv` u podatkovni okvir naziva `auti`
+auti <- read.csv("auti.csv", fileEncoding="UTF-8", stringsAsFactors = F)
+
+# proučite okvir `auti`
+
+str(auti)
+head(auti)
+```
+
+
+***
+
+U ovoj tablici očito je narušen princip urednih podataka da u jedan stupac treba biti pohranjen samo jedan tip varijable - tehničke karakteristike automobila smještene su u jedinstveni stupac naziva `Tehnicka.karakteristika` a u stupcu `Vrijednost` nalaze se vrijednosti vrlo različitih tipova (masa u kg, dužina u m i sl.).
+
+Pokušajte urediti ovaj okvir uz pomoć naredbe `spread`.
+
+***
+
+## ZADATAK 9.10 - funkcija `spread` (2)
+
+
+```{r}
+# stvorite okvir `auti2` koji će biti uređena inačica okvira `auti`
+auti2 <- spread(auti, Tehnička.karakteristika, Vrijednost)
+
+# proučite okvir `auti2`
+
+str(auti2)
+head(auti2)
+```
+
+
+***
+
+Naredbe `gather` i `spread` ne koriste se samo za "neuredne" podatke. One mogu biti vrlo korisne kod pretvorbe tzv. "širokih" podatka (*wide data*) u "dugačke" (*long data*). Prikažimo ovo na primjeru tzv. podataka o potrošačkim košaricama.
+
+Potrošačka košarica predstavlja zapis atrikala koje je kupac kupio tijekom jednog dolaska u trgovinu (bilo da se radi o virtualnoj trgovini ili stvarnom prodajnom mjestu). Ako podatke o potrošačkoj košarici zapisujemo u "širokom" formatu, onda podatke organiziramo tako da stupci predstavljaju pojedine artikle a retci jednu kupnju (ili račun). Vrijednost `1` znači da se artikl našao u košarici, `0` da nije bio prisutan. Ovakav prikaz pogodan je za različite tipove analiza, ali nije ekonomičan - podaci će često imati jako puno "nula". S druge strane, "dugački" format jednostavno u svaki redak stavlja kombinaciju identifikatora košarice (ili broja računa) i naziv (ili šifru) kupljenog artikla. Ovakav zapis imati će znatno više redaka, ali je znatno pogodniji u slučajevima kada je broj artikala u asortimanu daleko veći od broja artikala u prosječnoj košarici.
+
+***
+
+## ZADATAK 9.11 - podatkovni skup `potrosackaKosarica`
+
+
+```{r}
+# učitajte podatke iz datoteke `potrosackaKosarica.csv` u podatkovni okvir imena `racuni`
+racuni <- read.csv("potrosackaKosarica.csv", stringsAsFactors = F, encoding = "UTF-8")
+
+# proučite okvir `racuni`
+str(racuni)
+head(racuni)
+```
+
+
+***
+
+## ZADATAK 9.12 - pretvorba okvira u "dugi" format
+
+
+```{r}
+# pretvorite podatke okvira `racuni` iz "širokog" formata u "dugi"
+# novi okvir nazovite `racuniDugi`
+racuni <- read.csv("potrosackaKosarica.csv", encoding = "UTF-8")
+head(racuni)
+racuniDugi <- gather(racuni, artikl, vrijednost, -racunID)
+racuniDugi
+racuniDugi <- racuniDugi [racuniDugi$vrijednost != 0, 1:2]
+racuniDugi <- racuniDugi[order(racuniDugi$racunID), ]
+head(racuniDugi)
+write.csv(racuniDugi, file = 'potrosackaKosaricaDugiFormat.csv', row.names = F)
+```
+
+
+***
+
+## ZADATAK 9.13 - pretvorba okvira u "široki" format
+
+
+```{r}
+# pokušajte "dugi" format oblikovati natrag u "široki"
+# pohranite rezultat u datoteku `potrosackaKosaricaSirokiFormat.csv`
+racuniSiroki <- racuniDugi
+racuniSiroki$Vrijednost <- 1
+racuniSiroki
+racuniSiroki <- spread(racuniSiroki, artikl, Vrijednost, fill = 0)
+head(racuniSiroki)
+write.csv(racuniSiroki, file = 'potrosackaKosaricaSirokiFormat.csv', row.names = F)
+```
+
+
+***
+## Funkcije *separate* i *unite*
+
+***
+
+Paket `tidyr` ima još niz korisnih funkcija namjenjenih "uređivanju" podataka a mi ćemo ovdje obratiti još dvije koje se relativno često koriste - `separate` i `unite`.
+
+Funkcija `separate` je korisna kada neki stupac ima "složene" vrijednosti koje želimo rastaviti u dva ili više stupaca.
+
+## ZADATAK 9.14 - podatkovni skup `odjeli`
+
+
+```{r}
+# čitajte podatke iz datoteke `odjeli.csv` u varijablu `odjeli`
+
+# proučite okvir `odjeli`
+odjeli <- read.csv("odjeli.csv", stringsAsFactors = F)
+
+str(odjeli)
+head(odjeli)
+```
+
+
+***
+
+Ova tablica prikazuje prihode i rashode odjela neke tvrtke po kvartalima. Kvartali su trenutno pohranjeni u složenu varijablu `Kvartal` koja se sastoji od identifikatora godišnjeg kvartala (Q1, Q2, Q3 ili Q4) i godine. Za potrebe analize vjerojatno bi bilo zgodno ovo rastaviti u dva stupca - `Kvartal` (koji bi pohranjivao samo identifikator kvartala) i `Godina`.
+
+Paket `tidyr` za ovakve potrebe nudi funkciju `separate` sa sljedećim potpisom:
+
+```{r, eval = FALSE}
+separate(data, col, into, sep = "[^[:alnum:]]+", remove = TRUE,
+  convert = FALSE, extra = "warn", fill = "warn", ...)
+```
+
+Potpunu dokumentaciju funkcije možemo pogledati naredbom `?separate` a ovdje ćemo navesti objašnjenje nekih važnijih parametara:
+
+- `col` - stupac kojeg rastavljamo (ne moramo koristiti navodnike)
+- `into` - imena novih stupaca (preporučuje se koristiti znakovni vektor)
+- `sep` - separator vrijednosti u originalnom stupcu, *default*-na vrijednost je zapravo regularni izraz za "nešto što nije alfanumerički znak"
+- `remove` - opisuje da li je potrebno ukloniti originalni stupac ili ne
+
+Pokušajmo primjeniti ovu funkciju na tablicu `odjeli`. Ponovimo usput princip korištenja *pipeline* operatora.
+
+***
+
+## ZADATAK 9.15 - funkcija `separate`
+
+
+```{r}
+# razdvojite stupac `Kvartal` u stupce `Kvartal` i `Godina` uz uklanjanje originalnog stupca
+# rezultat pohranite u varijablu `odjeli2`
+# sve učinite u sklopu jedne naredbe uz pomoć `%>%` operatora
+
+
+# proučite okvir `odjeli2`
+odjeli
+odjeli %>% separate(Kvartal, c("Kvartal", "Godina"), "-") -> odjeli2
+
+str(odjeli2)
+head(odjeli2)
+```
+
+***
+
+Uočite da su stupci `Kvartal` i `Godina` zapravo kategorijske varijable i da bi ih bilo dobro faktorizirati. Faktoriziranje stupaca je nešto teže izvesti uz pomoć *pipeline* operatora (iako je izvedivo!) no u narednim poglavljima naučiti ćemo kako to puno lakše napraviti uz pomoć funkcija iz paketa `dplyr`.
+
+Funkcija `separate` se često koristi za rastavljanje datuma (npr. `2016-10-28` u godinu, mjesec i dan) no u takvim situacijama preporuka je koristiti paket `lubridate` koji je stvoren upravo za lakše upravljanje datumima. Ovaj paket upoznati ćemo u jednom od sljedećih poglavlja.
+
+***
+
+Za kraj naučimo još funkciju `unite` koja se nešto rijeđe koristi a zapravo je inverz funkcije `separate`. Potpis funkcije `unite` je:
+
+```{r, eval = FALSE}
+unite(data, col, ..., sep = "_", remove = TRUE)
+```
+
+I u ovom slučaju dokumentaciju lako dohvaćamo sa `?unite`, a ovdje dajemo opis parametara koji potencijalno zahtjevaju dodatno objašnjenje:
+
+- `col` - ime novog stupca (nije nužno koristiti navodnike)
+- `...` - imena stupaca koje spajamo - ne moramo koristiti navodnike, a ukoliko ima puno stupaca možemo se koristiti sličnom sintaksom za odabir kao i kod funkcije `gather`
+
+Isprobajmo naredbu na okviru `odjeli2`.
+
+***
+
+## ZADATAK 9.16 - funkcija `unite`
+
+
+```{r}
+# spojite stupce `Kvartal` i `Godina` iz tablice `odjeli2` u jedinstven stupac `Kvartal`
+# uklonite stupce `Kvartal` i `Godina`
+# koristite `-` kao separator
+# spremite rezultat u varijablu `odjeli3`
+# sve ovo izvedite u sklopu jedne naredbe uz pomoć `%>%` operatora
+
+
+# proučite okvire `odjeli` i `odjeli3`
+odjeli2 %>% unite(Kvartal, Kvartal, Godina, sep = "-") -> odjeli3
+str(odjeli)
+str(odjeli3)
+head(odjeli)
+head(odjeli3)
+```
+
+
+***
+
+

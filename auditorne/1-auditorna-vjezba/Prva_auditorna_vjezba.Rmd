@@ -1,0 +1,593 @@
+---
+title: "SAP - Prva auditorna vježba"
+subtitle: "Case study *Iris data*: Deskriptivna statistika i vizualizacija podataka"
+author: "Stjepan Begušić, David Bojanić, Vanessa Keranović"
+date: "14.10.2020."
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Uvod
+
+Vježbe i projekt na predmetu "Statistička analiza podataka" izvode se u programskom jeziku R, radnoj okolini RStudio, u obliku R Markdown izvještaja koji kombiniraju pisanje teksta s programskim kodom i rezultatima izvođenja koda.
+
+Pojedine auditorne vježbe bavit će se konkretnim case study-jem kroz koji će se demonstrirati praktična strana obrađenog gradiva.
+
+## Case study: *Iris data*
+
+R uključuje razne ugrađene skupove podataka u sklopu paketa `datasets`. 
+
+```{r}
+library(help = "datasets")
+```
+
+Jedan od poznatijih skupova podataka su podatci Edgara Andersona o duljinama i širinama lapova i latica cvjetova irisa.
+
+```{r}
+help(iris) #help ili ?iris inače dosta korisna funkcija
+```
+
+Dataset *iris* sastoji se od 3 vrste cvijeta iris - *Iris setosa*, *versicolor*, i *virginica*.
+150 je primjera u datasetu; svaki primjer sastoji se od 5 varijabli.
+
+Prije svega, bitno je znati kontekst podataka! Interpretacija podataka je značajan dio obrade podataka.
+Upoznajmo se s datasetom *iris*:
+
+```{r}
+# Učitavanje built-in dataseta i pregled samo prvih nekoliko redaka
+irisdata = iris
+head(irisdata)
+#irisdata
+```
+
+Što predstavljaju pojedine varijable? Koja je koja? Što možemo iz njih naslutiti? Koja je svrha? Kakve analize možemo provesti? Kakve rezultate potencijalno možemo dobiti?
+
+```{r, fig.cap="Iris species", out.width = '100%'}
+knitr::include_graphics("iris-machinelearning.png")
+```
+
+```{r, fig.cap="Sepal and petal width and length", out.width = '50%', fig.align="center"}
+knitr::include_graphics("iris_petal-sepal-width-length.png")
+```
+
+
+Osnovne manipulacije nad datasetom:
+
+```{r}
+# Dimenzije dataseta:
+dim(irisdata)  # broj redaka, broj stupaca (broj primjera, broj varijabli) 
+nrow(irisdata) # broj redaka
+ncol(irisdata) # broj stupaca -> što daje length?
+names(irisdata) # imena stupaca
+```
+
+```{r}
+class(irisdata) 
+```
+
+```{r}
+# Uvodna analiza, pristup stupcima data.frame objekta preko imena pomocu operatora $
+irisdata$Sepal.Length
+class(irisdata$Petal.Width)
+# klasa ove varijable je "numeric" -- varijabla na intervalnoj/racionalnoj skali - koja od njih u ovom slučaju?
+
+irisdata$Species    
+class(irisdata$Species)
+# klasa ove varijable je "factor" -- varijabla na nominalnoj/ordinalnoj skali - koja od njih u ovom slučaju?
+```
+
+```{r}
+# Indeksiranje 
+
+# Jedan indeks izdvaja stupac ili sve osim određenih stupaca
+irisdata[2]
+irisdata[c(2,4)]
+irisdata[-c(2,4)]
+
+# Kod vektora od dva indeksa prvi predstavlja redak a drugi stupac
+irisdata[c(2,5,6), 3:5]
+
+# primijetiti razliku:
+# retci 3 i 4 i svi stupci
+irisdata[c(3,4),]
+# svi retci i stupci 3 i 4
+irisdata[,c(3,4)]
+irisdata[c(3,4)]
+```
+
+
+```{r}
+
+# Još osnovnih manipulacija stupcima:
+irisdata[c(2,5,6), c("Sepal.Width","Species")] 
+irisdata[c(2,5,6), -c(5)] 
+
+# Izdvojiti sve redove gdje je Sepal Width veći od 3.3:
+irisdata[irisdata$Sepal.Width > 3.3,]
+# Izdvojiti sve stupce osim stupca Species:
+irisdata[names(irisdata) != "Species"]
+# Izdvojiti sve stupce koji opisuju duljinu:
+irisdata[names(irisdata) %in% c("Sepal.Length","Petal.Length")]
+# Ispisati sve Sepal Width za koji je Petal Length veci od 1.4:
+irisdata$Sepal.Width[irisdata$Petal.Length > 1.4]
+# ili:
+irisdata[irisdata$Petal.Length > 1.4,]$Sepal.Width
+
+# Izdvojiti sve pozicije (indekse) za koje vrijedi uvjet Sepal.Width > 3.3 i ispisati sve pripadne primjere:
+ind = which(irisdata$Sepal.Width > 3.3)
+irisdata$Sepal.Width > 3.3
+ind
+irisdata[ind,]
+
+```
+
+## Mjere centralne tendencije
+
+Mjere centralne tendencije (ili središnje mjere) opisuju skup podataka jednom vrijednošću oko koje se podatci grupiraju. Najčešće korištene mjere centralne tendencije su: aritmetička sredina, medijan, mod i podrezana aritmetička sredina.
+
+
+```{r}
+# Aritmeticka sredina - mean
+mean(irisdata$Petal.Length)
+
+# Podrezana aritmeticka sredina s uklanjanjem po 20% najmanjih i najvecih podataka
+mean(irisdata$Petal.Length, trim=0.2)
+
+# Medijan - robusna mjera centralne tendencije(točno 50% podataka je manje i 50% podataka veće od te vrijednosti)
+median(irisdata$Petal.Length)
+
+# 1., 2. i 3. kvartil
+quantile(irisdata$Petal.Length, probs = c(0.25,0.5,0.75)) # Koji kvartil je ujedno i medijan? 
+
+# Mod (most frequent value) - vrijednost koja se najčešće pojavljuje u podatcima. Kada ova mjera ima smisla?
+require(modeest)
+mfv(irisdata$Petal.Length)
+```
+
+
+## Mjere rasipanja
+Mjere rasipanja opisuju varijabilnost podataka, koliko su podatci koncentrirani ili rašireni. Najčešće korištene mjere su: rang, interkvartilni rang, varijanca, standardna devijacija i koeficijent varijacije.
+
+```{r}
+# Rang- razlika između najvećeg i najmanjeg iznosa u podatcima
+max(irisdata$Petal.Length)-min(irisdata$Petal.Length)
+
+# Interkvartilni rang - razlika trećeg i prvog kvartila podataka --> Zašto je ovo robusnija mjera od prethodne?
+IQR(irisdata$Petal.Length)
+
+# Varijanca i standardna devijacija - najčešće korištene mjere rasipanja
+var(irisdata$Petal.Length)
+sd(irisdata$Petal.Length)
+sqrt(var(irisdata$Petal.Length))
+# Računa li var() nepristranu procjenu varijance?
+help(var)
+
+# Koeficijent varijacije -  relativna mjera rasipanja koja opisuje rasipanje podataka u odnosu na njihovu aritmetičku sredinu. Kada ima smisla koristiti ovu mjeru?
+suppressWarnings(require(raster,quietly = TRUE))
+#cv(irisdata$Petal.Length)
+sd(irisdata$Petal.Length)/mean(irisdata$Petal.Length)
+```
+
+
+
+## Osnovna deskriptivna statistika i (napredna) manipulacija podataka
+
+```{r}
+# Osnovna deskriptivna statistika:
+summary(irisdata)
+```
+
+
+Izračunajmo srednje vrijednosti i medijane svih mjera irisa, zasebno za svaku vrstu irisa u podatcima.
+Koliko se razlikuju srednje vrijednosti i medijani za svaku vrstu i što to govori o obliku distribucije tih mjera?
+
+Izračunajmo potom robusniju procjenu računajući podrezanu aritmetičku sredinu s uklanjanjem 10\% najvećih i najmanjih vrijednosti.
+
+```{r}
+# tidyverse - vrlo koristan skup biblioteka koji omogućuje jos elegantniju manipulaciju data frame-ovima
+# https://www.tidyverse.org/packages/
+
+library(tidyverse)
+
+irisdata %>% group_by(Species) %>% summarise(
+          Mean.Sep.Len = mean(Sepal.Length),
+          Mean.Pet.Len = mean(Petal.Length),
+          Mean.Sep.Wid = mean(Sepal.Width),
+          Mean.Pet.Wid = mean(Petal.Width)
+            ) -> summary.result1
+summary.result1
+
+
+irisdata %>% group_by(Species) %>% summarise(
+          Med.Sep.Len = median(Sepal.Length),
+          Med.Pet.Len = median(Petal.Length),
+          Med.Sep.Wid = median(Sepal.Width),
+          Med.Pet.Wid = median(Petal.Width)
+            ) -> summary.result2
+summary.result2
+
+# Podrezana srednja vrijednost - zašto je ovo robusnija metoda u odnosu na običnu srednju vrijednost?
+irisdata %>% group_by(Species) %>% summarise(
+          MeanTr.Sep.Len = mean(Sepal.Length, trim = 0.1),
+          MeanTr.Pet.Len = mean(Petal.Length, trim = 0.1),
+          MeanTr.Sep.Wid = mean(Sepal.Width, trim = 0.1),
+          MeanTr.Pet.Wid = mean(Petal.Width, trim = 0.1)
+            ) -> summary.result3
+summary.result3
+
+# Do sada smo računali mjere centralne tendencije za sve vrste zajedno - ali vidimo da kad ih razdvojimo po grupama, vrste se grupiraju oko potencijalno različitih vrijednosti
+# Usporedite razliku između medijana i meana za petal length izračunatih za sve vrste zajedno, potom izračunatih za sve vrste posebno.
+```
+
+```{r}
+# Pomoću summary-ja statistike za pojedinu vrstu:
+summary(irisdata[irisdata["Species"] == c("setosa"),])
+summary(irisdata[irisdata["Species"] == c("versicolor"),])
+summary(irisdata[irisdata["Species"] == c("virginica"),])
+
+# Još jedan način:
+aggregate(irisdata[names(irisdata) != "Species"], list(irisdata$Species), mean)
+aggregate(irisdata[names(irisdata) != "Species"], list(irisdata$Species), median)
+aggregate(irisdata[names(irisdata) != "Species"], list(irisdata$Species), mean,trim=0.1)
+
+# Prednost tidyverse-a?
+```
+
+
+Kada ima smisla (za kakve podatke) koristiti ovu deskriptivnu statistiku?
+Recimo da je dan rastući vremenski niz. Biste li primijenili mjere centralne tendencije na takav dataset?
+
+Ponovno se vraćamo na značajnost konteksta, interpretacije podataka!
+
+
+Izračunajmo sada interkvartilni rang (IQR) i standardnu devijaciju svih mjera za svaku od vrsta irisa zasebno.
+
+```{r}
+irisdata %>% group_by(Species) %>% summarise(
+          IQR.Sep.Len = IQR(Sepal.Length),
+          IQR.Pet.Len = IQR(Petal.Length),
+          IQR.Sep.Wid = IQR(Sepal.Width),
+          IQR.Pet.Wid = IQR(Petal.Width)
+            ) -> summary.result
+summary.result
+
+irisdata %>% group_by(Species) %>% summarise(
+          sd.Sep.Len = sd(Sepal.Length),
+          sd.Pet.Len = sd(Petal.Length),
+          sd.Sep.Wid = sd(Sepal.Width),
+          sd.Pet.Wid = sd(Petal.Width)
+            ) -> summary.result
+summary.result
+
+# Usporedite opet razliku ovih mjera za petal length izračunatih za sve vrste zajedno, potom izračunatih za sve vrste posebno.
+# Možemo li iz ovih statistika zaključiti nešto o varijabilnosti i raspršenosti sepal length-a različitih vrsta irisa? Na što bi mogao upućivati različit redoslijed veličina ovih dviju mjera? Kasnije se na box plotu sepal length-a može vidjeti da vrsta virginica ima stršeću vrijednost upravo za sepal length.
+
+
+# Kada je koja od ovih mjera rasipanja primjenjivija? Koja je primjenjivija za iris dataset?
+```
+
+
+
+## Vizualizacija podataka
+
+Opet uvelike ovisi o kontekstu podataka, a neki od osnovnih načina vizualizacije podataka su:
+
+* Histogram - pokazuje oblik distribucije i gustoću podataka, a zasnovan je na grupiranju varijabli u razrede
+* Pravokutni dijagram (box plot) - kombinira prikaz medijana, kvartila podataka, te najmanje i najveće vrijednosti. Pravokutni dijagram prikazuje i stršeće vrijednosti, koje se standardno definiraju kao podatci koji su iznad $Q_3+1.5\cdot IQR$ ili ispod $Q_1-1.5\cdot IQR$.
+* Dijagram raspršenja (scatter plot) - jedan je od najvažnijih načina prikaza bivarijantnih podataka, te daje informaciju o povezanosti varijabli
+
+Zanima nas kako je distribuirana duljina lapa - prikažimo histogramom.
+Kako izabrati broj razreda? Koje su granice razreda? Je li bolje prikazati podatke agregirano ili grupirano? Želimo li prikazati frekvencije ili relativne frekvencije (td. je površina histograma = 1)?
+
+
+```{r}
+h = hist(irisdata$Sepal.Length,
+         breaks=3,
+         main="Sepal length histogram, breaks = 3",
+         xlab="Sepal length [cm]",
+         ylab='Frequency',
+         col="blue"
+         )
+
+h = hist(irisdata$Sepal.Length,
+         breaks=100,
+         main="Sepal length histogram, breaks = 100",
+         xlab="Sepal length [cm]",
+         ylab='Frequency',
+         col="blue"
+         )
+
+h = hist(irisdata$Sepal.Length,
+         main="Sepal length histogram, breaks = ?",
+         xlab="Sepal length [cm]",
+         ylab='Frequency',
+         col="blue"
+         )
+
+abline(v = mean(irisdata$Sepal.Length), col = "red", lwd = 4)
+
+
+# Možemo li iz ovog histograma isčitati da se radi o multimodalnoj distribuciji?
+```
+
+```{r}
+h = hist(irisdata$Petal.Length,
+         main="Petal length histogram",
+         xlab="Petal length [cm]",
+         ylab='Frequency',
+         ylim= c(0,40)
+         )
+
+mfv(irisdata$Petal.Length)
+
+
+```
+
+```{r}
+h = hist(irisdata$Sepal.Length,
+         breaks=15,
+         main="Sepal length histogram, breaks = 15",
+         xlab="Sepal length [cm]",
+         ylab='Frequency',
+         col="lightblue"
+         )
+# Histogram duljine lapa s cca. 15 razreda (broj razreda shvaca kao "sugestiju")
+# Kako možemo doći do breakpoint-ova:
+h$breaks
+length(h$breaks)
+```
+
+
+```{r}
+# Ako želimo dati točan broj razreda, moramo definirati točke breakpoint-ova
+
+b = seq(min(irisdata$Sepal.Length) - 0.1,max(irisdata$Sepal.Length) + 0.1,0.2)
+length(b)
+h = hist(irisdata$Sepal.Length,
+         breaks=b,
+         main="Sepal length histogram",
+         xlab="Sepal length [cm]",
+         ylab='Frequency',
+         col="lightblue"
+         )
+# Broj razreda i frekvencije:
+length(h$breaks)
+h$counts
+
+
+# Histogram s prikazom relativnih frekvencija:
+h = hist(irisdata$Sepal.Length,
+         prob=TRUE,
+         breaks=15,
+         main="Sepal length histogram",
+         xlab="Sepal length [cm]",
+         ylab='Frequency',
+         col="lightblue"
+         )
+
+# Broj razreda i relativne frekvencije:
+length(h$breaks)
+h$density
+
+```
+
+Stupčasti dijagram (barplot):
+
+```{r}
+# Ako već imamo frekvencije:
+data.counts = h$counts
+barplot(data.counts,
+        main="Sepal length histogram",
+        xlab="Sepal length [cm]",
+        ylab='Frequency',
+        col="pink")
+
+data.counts = h$density
+barplot(data.counts,
+        main="Sepal length histogram",
+        xlab="Sepal length [cm]",
+        ylab='Frequency',
+        col="pink")
+```
+Usporedba grupiranih podataka:
+
+```{r}
+# Ako grupiramo podatke i onda radimo histogram:
+b = seq(min(irisdata$Sepal.Length) - 0.1,max(irisdata$Sepal.Length) + 0.1,0.2)
+
+h1 = hist(irisdata[irisdata["Species"] == c("setosa"),]$Sepal.Length,
+         breaks=b,
+         plot=FALSE)
+h2 = hist(irisdata[irisdata["Species"] == c("versicolor"),]$Sepal.Length,
+         breaks=b,
+         plot=FALSE)
+h3 = hist(irisdata[irisdata["Species"] == c("virginica"),]$Sepal.Length,
+         breaks=b,
+         plot=FALSE)
+
+data <- t(cbind(h1$counts,h2$counts,h3$counts))
+data
+barplot(data,beside=TRUE, col=c("lightblue", "purple", "lightgreen"), xlab="Sepal length [cm]", ylab='Frequency',)
+legend("topleft",c("setosa","versicolor","virginica"),fill = c("lightblue", "purple", "lightgreen"))
+
+
+```
+
+Usporedite pravokutne dijagrame različitih vrsta za pojedine varijable.
+
+```{r}
+# Pravokutni dijagram versicolor vrste za duljinu lapa:
+boxplot(irisdata[irisdata["Species"]=="versicolor",]$Sepal.Length,
+        main='Sepal length box-plot',
+        ylab='Sepal length [cm]')
+
+# Vrijednosti pravokutnog dijagrama dolaze iz deskriptivne statistike:
+summary(irisdata[irisdata["Species"]=="versicolor",]$Sepal.Length)
+```
+
+```{r}
+# Pravokutni dijagrami vrsta za duljinu lapa:
+boxplot(Sepal.Length ~ Species,data=irisdata)
+
+aggregate(irisdata[names(irisdata) != "Species"]$Sepal.Length, list(irisdata$Species), median)
+summary(irisdata[irisdata["Species"]=="virginica",]$Sepal.Length)
+
+
+boxplot(irisdata[irisdata["Species"]=="virginica",]$Sepal.Length,
+        main='Sepal length box-plot',
+        ylab='Sepal length [cm]',
+        range=1.5)
+
+```
+
+
+Možemo li iz dijagrama raspršenja naslutiti kakvu vezu između duljine i širine lapa?
+
+Neka iz grafa bude jasno koja točka zastupa koju vrstu irisa - možemo li što naslutiti iz tog prikaza?
+
+```{r}
+# Ne razlikujemo vrste irisa:
+plot(irisdata$Sepal.Length,irisdata$Sepal.Width,
+     col="blue",
+     xlab='Sepal length [cm]',
+     ylab='Sepal width [cm]')
+
+# Razlikujemo vrste irisa:
+plot(irisdata$Sepal.Length[irisdata$Species=='setosa'],
+     irisdata$Sepal.Width[irisdata$Species=='setosa'],
+     col='blue',
+     xlim=c(min(irisdata$Sepal.Length),max(irisdata$Sepal.Length)),
+     ylim=c(min(irisdata$Sepal.Width),max(irisdata$Sepal.Width)),
+     xlab='Sepal length [cm]',
+     ylab='Sepal width [cm]')
+
+points(irisdata$Sepal.Length[irisdata$Species=='versicolor'],
+       irisdata$Sepal.Width[irisdata$Species=='versicolor'],col='red')
+points(irisdata$Sepal.Length[irisdata$Species=='virginica'],
+       irisdata$Sepal.Width[irisdata$Species=='virginica'],col='green')
+```
+
+Što možemo naslutiti ako nacrtamo dijagram raspršenja za duljine i širine latica?
+```{r}
+# Provjerimo kako izgleda scatterplot za latice:
+
+plot(irisdata$Petal.Length[irisdata$Species=='setosa'],
+     irisdata$Petal.Width[irisdata$Species=='setosa'],
+     col='blue',
+     xlim=c(min(irisdata$Petal.Length),max(irisdata$Petal.Length)),
+     ylim=c(min(irisdata$Petal.Width),max(irisdata$Petal.Width)),
+     xlab='Petal length [cm]',
+     ylab='Petal width [cm]')
+
+points(irisdata$Petal.Length[irisdata$Species=='versicolor'],
+       irisdata$Petal.Width[irisdata$Species=='versicolor'],col='red')
+points(irisdata$Petal.Length[irisdata$Species=='virginica'],
+       irisdata$Petal.Width[irisdata$Species=='virginica'],col='green')
+```
+
+
+## Prljavi podatci
+
+Osim ugrađenih skupova podataka, u R možemo učitati i podatke iz datoteka različitih formata.
+
+Što smo do sada zanemarili provjeriti, odnosno podrazumijevali?
+
+Pri učitavanju podataka iz datoteka može se dogoditi da su tipovi nekih varijabli krivo prepoznati -- u tom slučaju potrebno je provjeriti tipove i ručno ih ispraviti.
+Također, moguće je da u podatcima nedostaju neke vrijednosti, koje u učitanom `data.frame`-u poprimaju vrijednost `NA`.
+Moguće je i da su neke vrijednosti krivo unesene ili krivo učitane.
+
+```{r}
+# Učitavanje podataka iz csv datoteke:
+iris.modif = read.table("iris_mod.txt")
+head(iris.modif)
+```
+
+Vidimo da se sve krivo ucitalo jer nije dobar separator pa cemo popraviti separator:
+```{r}
+iris.modif = read.table("iris_mod.txt", sep = ",")
+head(iris.modif)
+dim(iris.modif)
+
+```
+
+Jesu li tipovi stupaca ispravni?
+```{r}
+class(iris.modif$Species)
+# Klasa je integer - to ne želimo jer se radi o tipu irisa --> kategorijska varijabla!
+iris.modif$Species = as.factor(iris.modif$Species)
+class(iris.modif$Species)
+iris.modif$Species
+
+iris.modif$Petal.Width
+
+```
+
+Ima li nedostajućih vrijednosti?
+```{r}
+# is.na ce nam vratiti logical vektor koji ima TRUE na mjestima gdje pod$Petal.Length ima NA:
+sum(is.na(iris.modif$Petal.Length)) # Koliko?
+sum(is.na(iris.modif$Sepal.Length)) # Koliko?
+sum(is.na(iris.modif$Petal.Width)) # Koliko?
+sum(is.na(iris.modif$Sepal.Width)) # Koliko?
+sum(is.na(iris.modif$Species)) # Koliko?
+
+# complete.cases ce vratiti logical vrijednost za svaki redak;
+# Vrijednost je FALSE --> barem jedan element retka NA
+sum(!complete.cases(iris.modif)) 
+
+
+# Koji su to retci?
+iris.modif[!complete.cases(iris.modif),]
+
+
+# Izbacit ćemo nedostajuce vrijednosti
+iris.modif.full = iris.modif[complete.cases(iris.modif),]
+
+iris.modif.full %>% group_by(Species) %>% summarise(
+          count = n())
+
+```
+
+Deskriptivna statistika:
+```{r}
+summary(iris.modif.full)
+
+
+boxplot(Petal.Width ~ Species,data=iris.modif.full)
+
+iris.modif.full %>% group_by(Species) %>% summarise(
+          sd = sd(Petal.Width),
+          IQR = IQR(Petal.Width),
+          mean= mean(Petal.Width)
+            ) -> summary.result
+summary.result
+
+plot(iris.modif.full$Petal.Width[iris.modif.full$Species==1],
+     col='blue',
+     ylim=c(min(iris.modif.full$Petal.Width),max(iris.modif.full$Petal.Width)),
+     ylab='Petal width [cm]')
+points(iris.modif.full$Petal.Width[iris.modif.full$Species==2],col='red')
+points(iris.modif.full$Petal.Width[iris.modif.full$Species==3],col='dark green')
+
+```
+
+Koji je to outlier? Je li taj outlier točna vrijednost?
+```{r}
+ind = which(iris.modif.full$Petal.Width >20)
+iris.modif.full[ind,]
+iris.cleaned = iris.modif.full[-ind,]
+
+summary(iris.cleaned)
+```
+
+Je li izbacivanjzue redaka s nedostajućim vrijednostima uvijek najbolje rješenje?
+
+Npr., pretpostavimo da imamo 1000 podataka (redaka) opisanih sa 150 varijabli (stupaca), te u 90% njih varijabla pod rednim brojem 84. ima NA (ostale su prisutne). Ako bismo maknuli sve retke kod kojih funkcija `complete.cases()` poprima vrijednost `FALSE`, drastično bismo smanjili skup podataka (10 puta!). S druge strane, ako maknemo samo stupac 84, još uvijek imamo 1000 podataka (no jednu varijablu tj. stupac manje).
+Nekad ćemo moći ručno popuniti nedostajuće vrijednosti, a nekad će nedostajuća vrijednost nositi neku dodatnu informaciju.
+
+Kako ćemo tretirati nedostajuće vrijednosti ovisit će prvenstveno o samom datasetu, odnosno kontekstu podataka. Za kraj ovih vježbi, još jednom, naglašavamo značajnost interpretacije podataka!
+
+

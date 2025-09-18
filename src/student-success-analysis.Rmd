@@ -1,0 +1,888 @@
+---
+title: "Student success analyisis"
+subtitle: "Statistical data analysis project report"
+
+author:
+  - Matej Ciglenečki
+  - Petar Dragojević
+  - Magda Radić
+  - Tomislav Prhat
+output:
+  pdf_document:
+    toc: true
+  html_document: default
+abstract: >+
+  The main goal of the project was to create a report. The report had to contain clearly explained concepts of statistical data analysis applied to the existing dataset. There weren't restrictions for the selection of statistical methods, as long as they were applied to the appropriate context and covered in the course's curriculum. The report consists of the test cases selected from the recommended list of test cases provided by faculty personnel or cases made up by team members. One of the requirements was that the R language had to be used to analyze the data and generate the report. The project's grade depended on the quality of the report and oral examination done by faculty personnel which examined the knowledge of the theory of the methods used (why you may or may not use a particular test, assumptions for tests used, details of the statistical methods, etc.). The dataset includes answers to survey questions with grades in mathematics and Portuguese of two students high schools. Collecting data on student achievement in teaching is a prerequisite for analyzing and improving the quality of education system. Details of the dataset are located at [pdfs/dataset_documentation.pdf](./pdfs/dataset_documentation.pdf) \
+   \
+  **Grade: 38/40**
+---
+
+\newpage
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rlang)
+library(tidyverse)
+library(styler)
+library(fastDummies)
+library(formatR) # output width cutoff
+library(collections)
+library(corrplot)
+library(nortest) # lilliefors test
+```
+
+
+```{r, include=FALSE}
+styler::style_dir() # Style the current file so it's well formated
+message("Your current working directory is: ", getwd())
+knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 100), tidy = TRUE)
+options(warn=-1)
+```
+
+# Descriptive analysis
+
+Load the data, check dimension, columns, head, and summary
+```{r, colapse=TRUE}
+students_org <- readxl::read_excel("student_data.xlsx")
+dim(students_org)
+names(students_org) # column names
+```
+
+```{r, colapse=TRUE}
+head(students_org[1:7], n=3) # Show first 3 rows and first 7 columns
+```
+
+```{r, colapse=TRUE}
+summary(students_org[1:4]) # Show details for first 4 columns
+```
+
+Find what's the type of columns: numerical, characters...
+```{r, colapse=TRUE}
+cat("Numeric columns:", colnames(students_org %>% select(where(is.numeric))), fill=TRUE)
+
+cat("Character columns:", colnames(students_org %>% select(where(is_character))), fill=TRUE)
+# sapply(students_org, class)
+```
+
+Checking for invalid data. For example, does the data exceed maximal value specified in the dataset documentation? (it doesn't)
+```{r, colapse=TRUE, results='hide'}
+colMax <- students_org %>%
+  select(where(is.numeric)) %>%
+  sapply(., max, na.rm = TRUE)
+```
+Values of each column do not exceed values specified in the dataset documentation 
+
+Removing NaN/NA/null values from the dataset. Luckily, there were no such values.
+```{r, colapse=TRUE, results='hide'}
+# Are there any na values?
+students_org %>% filter(is.na(.))
+sum(apply(students_org, 2, is.nan))
+students_org %>% filter(is.null(.)) %>% summarise(n = n())
+
+# Drop these values just in case they show up with an another dataset
+# We will continue using "student" variable
+students <- students_org %>% filter_all(all_vars(!is.na(.) & !is.nan(.) & !is.null(.)))
+students_clean <- students
+```
+
+
+```{r, eval=FALSE, echo=FALSE}
+# Testing
+# find char columns (categorical)
+charcols <- names(students %>% select(where(is_character)))
+charcols
+
+students_char = students
+
+#transform char to factors
+students_char[charcols] <- lapply(students_char[charcols] , function(x) factor(x,
+                                  ordered = TRUE))
+
+# one hot encode categorical
+students_dummy = dummy_cols(students_char, charcols, remove_selected_columns = TRUE)
+# cor(students_dummy)
+summary(lm(students_char$G3_mat ~ students_char$traveltime * students_char$higher))
+```
+
+# Test case: Is parent's education independent from students' success?
+
+author: Petar Dragojević - advised by the rest of the group
+
+## Chi-squared test
+
+https://en.wikipedia.org/wiki/Pearson%27s_chi-squared_test 
+
+https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3900058/#:~:text=The%20assumptions%20of%20the%20Chi,the%20variables%20are%20mutually%20exclusive
+
+The Chi-square statistic is a non-parametric (distribution of the data doesn't matter) test designed to analyze group differences. It's applied to sets of categorical data to evaluate how likely it is that any observed difference between the sets arose by chance.
+
+A test of independence assesses whether observations consisting of measures on two variables, expressed in a contingency table, are independent of each other (e.g. polling responses from people of different nationalities to see if one's nationality is related to the response).
+
+Chi-squared test assumptions:
+
+* Sample size not less than 50 for a 2x2 contingency table - by using Chi-Squared test on small samples, might end up committing a [Type II error](https://en.wikipedia.org/wiki/Type_I_and_type_II_errors#Type_II_error)
+* Expected cell count should be 5 or more for 80% of the cells
+* The observations are always assumed to be independent of each other 
+
+
+First, transforming grades to the American grading system is performed:
+```{r}
+
+students <- students %>% mutate(Mat_grade =
+                     case_when(G3_mat < 10 ~ "F", 
+                               G3_mat >= 10 & G3_mat < 14 ~ "C",
+                               G3_mat >= 14 & G3_mat < 16 ~ "B",
+                               G3_mat >= 16 ~ "A")
+)
+students <- students %>% mutate(Por_grade =
+                     case_when(G3_por < 10 ~ "F", 
+                               G3_por >= 10 & G3_mat < 14 ~ "C",
+                               G3_por >= 14 & G3_mat < 16 ~ "B",
+                               G3_por >= 16 ~ "A")
+)
+```
+
+Then father's and mother's education are grouped into larger subgroups
+
+```{r}
+students <- students %>% mutate(MeduMod =
+                     case_when(Medu == "0" | Medu == "1" | Medu == "2" ~ "0", 
+                               Medu == "3" ~ "1",
+                               Medu == "4" ~ "2")
+)
+students <- students %>% mutate(FeduMod =
+                     case_when(Fedu == "0" | Medu == "1" | Fedu == "2" ~ "0", 
+                               Fedu == "3" ~ "1",
+                               Fedu == "4" ~ "2")
+)
+```
+
+
+'greatest parent education' is defined as the maximum between father's and mother's education.
+
+```{r}
+students$greatestparentedu <- pmax(students$MeduMod, students$FeduMod)
+```
+
+```{r, colapse=TRUE, echo=FALSE}
+par(mfrow=c(1,2))
+
+boxplot(students$G3_mat[students$MeduMod=="0"], students$G3_mat[students$MeduMod=="1"], students$G3_mat[students$MeduMod=="2"], students$G3_mat[students$FeduMod=="0"], students$G3_mat[students$FeduMod=="1"], students$G3_mat[students$FeduMod=="2"], names = c("M/low", "M/middle", "M/high", "F/low", "F/middle", "F/high"),xlab="Mother/Father education",ylab="Mathematics final grade", main="Mathematics")
+
+boxplot(students$G3_por[students$MeduMod=="0"], students$G3_por[students$MeduMod=="1"], students$G3_por[students$MeduMod=="2"], students$G3_por[students$FeduMod=="0"], students$G3_por[students$FeduMod=="1"], students$G3_por[students$FeduMod=="2"], names = c("M/low", "M/middle", "M/high", "F/low", "F/middle", "F/high"),xlab="Mother/Father education",ylab="Portuguese final grade", main="Portuguese")
+
+boxplot(students$G3_mat[students$greatestparentedu=="0"], students$G3_mat[students$greatestparentedu=="1"], students$G3_mat[students$greatestparentedu=="2"], names = c("low", "middle", "high"),xlab="greatest parent education",ylab="Mathematics final grade")
+
+boxplot(students$G3_por[students$greatestparentedu=="0"], students$G3_por[students$greatestparentedu=="1"], students$G3_por[students$greatestparentedu=="2"], names = c("low", "middle", "high"),xlab="greatest parent education",ylab="Portuguese final grade")
+```
+
+
+---
+
+| Hypothesis | Description                                                         |
+| ---------- | ------------------------------------------------------------------- |
+| H0         | Mathematics grade and greatest parent education are independent     |
+| H1         | Mathematics grade and greatest parent education are not independent |
+
+```{r}
+tbl = table(students$greatestparentedu, students$Mat_grade)
+added_margins_tbl = addmargins(tbl)
+print(added_margins_tbl)
+chisq.test(tbl,correct=F)$p.value
+```
+The p-value of the test is less than 0.05. We reject the H0 hypothesis in favor of the H1 hypothesis and we conclude that **education of the higher educated parent and mathematics grade are dependent attributes**.
+
+---
+
+| Hypothesis | Description                                                  |
+| ---------- | ------------------------------------------------------------ |
+| H0         | mathematics grade and mother's education are independent     |
+| H1         | mathematics grade and mother's education are not independent |
+
+```{r}
+tbl = table(students$MeduMod, students$Mat_grade)
+added_margins_tbl = addmargins(tbl)
+print(added_margins_tbl)
+chisq.test(tbl,correct=F)$p.value
+```
+The p-value of the independence test is less than 0.05. Therefore, we reject the H0 hypothesis in favor of the H1 hypothesis. Conclusion is drawn that **mother's education and mathematics grade are dependent.**
+
+---
+
+| Hypothesis | Description                                                  |
+| ---------- | ------------------------------------------------------------ |
+| H0         | mathematics grade and father's education are independent     |
+| H1         | mathematics grade and father's education are not independent |
+
+
+```{r}
+tbl2 = table(students$FeduMod, students$Mat_grade)
+added_margins_tbl2 = addmargins(tbl2)
+print(added_margins_tbl2)
+chisq.test(tbl2,correct=F)$p.value
+```
+The p-value of the independence test is higher than 0.05. Therefore, we do not reject the H0 hypothesis.
+
+---
+
+| Hypothesis | Description                                                       |
+| ---------- | ----------------------------------------------------------------- |
+| H0         | Portuguese grade and greatest parent education are independent     |
+| H1         | Portuguese grade and greatest parent education are not independent |
+
+
+
+```{r}
+tbl = table(students$greatestparentedu, students$Por_grade)
+added_margins_tbl = addmargins(tbl)
+print(added_margins_tbl)
+chisq.test(tbl,correct=F)$p.value
+
+for (col_names in colnames(added_margins_tbl)){
+  for (row_names in rownames(added_margins_tbl)){
+    if (!(row_names == 'Sum' | col_names == 'Sum') ){
+      cat('Expected frequency for class',col_names,'-',row_names,': ',(added_margins_tbl[row_names,'Sum'] * added_margins_tbl['Sum',col_names]) / added_margins_tbl['Sum','Sum'],'\n')
+    }
+  }
+}
+```
+The p-value of the test is less than 0.05. The H0 hypothesis is rejected in favor of the H1 hypothesis and it's concluded that education of higher educated parent and Portuguese grade are dependent attributes.
+
+Expected frequency for class (grade=A, education=1) 4.391753 could be problematic for Chi-square test of independence. However, the the assumption of the test is that expected frequency should be 5 or more **in at least 80%** of the cells. In which case, Fisher's exact test should be used since it's used for smaller sample sizes.
+
+---
+
+| Hypothesis | Description                                                 |
+| ---------- | ----------------------------------------------------------- |
+| H0         | Portuguese grade and mother's education are independent     |
+| H1         | Portuguese grade and mother's education are not independent |
+
+
+```{r}
+tbl = table(students$MeduMod, students$Por_grade)
+added_margins_tbl = addmargins(tbl)
+print(added_margins_tbl)
+chisq.test(tbl,correct=F)$p.value
+```
+The p-value of the test is less than 0.05. The H0 hypothesis is rejected in favor of the H1 hypothesis and it's concluded that mother's education and Portuguese grade are dependent.
+
+---
+
+| Hypothesis | Description                                                 |
+| ---------- | ----------------------------------------------------------- |
+| H0         | Portuguese grade and father's education are independent     |
+| H1         | Portuguese grade and father's education are not independent |
+
+
+```{r}
+tbl2 = table(students$FeduMod, students$Por_grade)
+added_margins_tbl2 = addmargins(tbl2)
+print(added_margins_tbl2)
+chisq.test(tbl2,correct=F)$p.value
+
+for (col_names in colnames(added_margins_tbl2)){
+  for (row_names in rownames(added_margins_tbl2)){
+    if (!(row_names == 'Sum' | col_names == 'Sum') ){
+      cat('Expected frequency for class ',col_names,'-',row_names,': ',(added_margins_tbl2[row_names,'Sum'] * added_margins_tbl2['Sum',col_names]) / added_margins_tbl2['Sum','Sum'],'\n')
+    }
+  }
+}
+```
+
+There are two (2) expected frequencies whose value is less than 5. Since 2/12 is close to 20% (16%) Fisher's exact test will be used in this case.
+
+```{r}
+fisher.test(tbl2)
+```
+
+The p-value of the test is higher than 0.05. The H0 hypothesis isn't rejected.
+
+# Test case: Which school is better in mathematics and which in Portuguese?
+author: Matej Ciglenečki - advised by the rest of the group
+
+```{r, colapse=TRUE, eval=FALSE, echo=FALSE}
+students$test <- students$absences_mat
+
+students$test  <- students %>% mutate(quintile = ntile(test,5))%>%group_by(quintile) %>% select(quintile)
+boxplot(students$G3_mat ~ unlist(students$test), names = c("QU1","QU2","QU3","QU4","QU5"),xlab="Quintiles of absences in mathematics ",ylab="Mathematics absences")
+```
+two (2) t-tests will be performed on four (4) different datasets. Dataset is split in four (4) different datasets (GP, MS) x (Mathematics, Portuguese): `gp_mat`, `gp_por`, `ms_mat`, `ms_por`
+
+Mean grades for each subject will be used to decide a direction (left or right) of a one-sided t-test. The school's mean with a higher value will be the alternative H1 hypothesis.
+
+```{r, colapse=TRUE, results='hide'}
+# Show average grade for all schools
+schools <- students %>%
+  select("school") %>%
+  distinct(.)
+schools # [GP, MS]
+subject_final_grade_names <- names(students)[grepl("G3", names(students))]
+
+# all_of Note: Using an external vector in selections is ambiguous. Use `all_of(vars)` instead of `vars` to silence this message.
+students_final_grade <- students %>% select("school", all_of(subject_final_grade_names))
+
+# Select only the subject grade and school
+gp_mat <- students_final_grade %>%
+  filter(school == "GP") %>%
+  select(G3_mat, school)
+gp_por <- students_final_grade %>%
+  filter(school == "GP") %>%
+  select(G3_por, school)
+ms_mat <- students_final_grade %>%
+  filter(school == "MS") %>%
+  select(G3_mat, school)
+ms_por <- students_final_grade %>%
+  filter(school == "MS") %>%
+  select(G3_por, school)
+```
+
+Columns are be renamed for easier usage.
+
+```{r, results='hide' }
+# Rename all columns to "grade"
+gp_mat <- gp_mat %>% rename(grade = G3_mat)
+gp_por <- gp_por %>% rename(grade = G3_por)
+ms_mat <- ms_mat %>% rename(grade = G3_mat)
+ms_por <- ms_por %>% rename(grade = G3_por)
+```
+
+## Relative frequencies of subjects
+
+Graphs show relative frequencies and means (vertical dashed lines) in mathematics grades for each school. Means are compared on both graphs. School's mean with a higher value (vertical line to the right) is taken as an alternative to the one-sided t-test. T-test will check a statistical significance between two means. 
+
+```{r, colapse=TRUE, echo=FALSE}
+# Plot mathematics -- final grade
+ggplot(gp_mat, aes(x = grade, y = (..count.. / sum(..count..)))) +
+  geom_histogram(bins = 20, aes(color = school, fill = school), alpha = 0.5) +
+  geom_histogram(data = ms_mat, bins = 20, aes(color = school, fill = school), alpha = 0.3) +
+  geom_vline(data = gp_mat, aes(xintercept = mean(grade), color = school), linetype = "dashed") +
+  geom_vline(data = ms_mat, aes(xintercept = mean(grade), color = school), linetype = "dashed") +
+  xlab("Grade") +
+  ylab("Relative frequency") +
+  labs(title = "Mathematics - relative frequencies and mean")
+```
+
+
+```{r, colapse=TRUE, echo=FALSE}
+# Plot portug -- final grade
+ggplot(gp_por, aes(x = grade, y = (..count.. / sum(..count..)))) +
+  geom_histogram(bins = 20, aes(color = school, fill = school), alpha = 0.5) +
+  geom_histogram(data = ms_por, bins = 20, aes(color = school, fill = school), alpha = 0.3) +
+  geom_vline(data = gp_por, aes(xintercept = mean(grade), color = school), linetype = "dashed") +
+  geom_vline(data = ms_por, aes(xintercept = mean(grade), color = school), linetype = "dashed") +
+  xlab("Grade") +
+  ylab("Relative frequency") +
+  labs(title = "Portuguese - relative frequencies and mean")
+```
+On both graphs, it's visible that `GP` school has higher a mean of grades in both subjects than `MS` school.
+
+## Normality test
+
+```{r,echo=FALSE,  eval=FALSE, results='hide'}
+### Ignore this block
+curve(dnorm,xlim=c(-4,4)) #Normal
+curve(dchisq(x,df=1),xlim=c(0,30)) #Chi-square with 1 degree of freedom
+
+hist(colMeans(sapply(rep(10,100),rnorm)),xlab='Sample mean',main='')
+hist(colMeans(sapply(rep(10,100),rchisq,df=1)),xlab='Sample mean',main='')
+
+qqp(colMeans(sapply(rep(10,100),rnorm)),xlab='Sample mean',main='')
+qqp(colMeans(sapply(rep(10,100),rchisq,df=1)),xlab='Sample mean',main='')
+
+x <- seq(-15, 15, by=0.001)
+y <- rnorm(x, mean(x), sd(x))
+x2 <- rnorm(5000, -1)
+y1 <- runif(30000)
+y1
+x2
+hist(y1, breaks=50)
+hist(x2, breaks=50)
+
+hist(y, breaks=50)
+ks.test(x,y,"pgamma")
+lillie.test(y)
+```
+
+Normality can be checked in multiple ways. In the following steps, two (2) methods are used:
+
+* visual (`qqnorm`)
+* quantitative decisions / tests (Lilliefors and Kolmogorov-Smirnov tests)
+```{r, colapse=TRUE}
+nrow(gp_mat) # == nrow(gp_por)
+nrow(ms_mat) # == nrow(ms_por)
+```
+`n` - size of the dataset for mathematics is `331` and `39` for Portuguese.
+
+```{r, colapse=TRUE, echo=FALSE}
+par(mfrow=c(1,2))
+
+qqnorm(gp_mat$grade, pch = 1, frame = FALSE, main = "GP school mathematics")
+qqline(gp_mat$grade)
+qqnorm(gp_por$grade, pch = 1, frame = FALSE, main = "GP school Portuguese")
+qqline(gp_por$grade)
+
+qqnorm(ms_mat$grade, pch = 1, frame = FALSE, main = "MS school mathematics")
+qqline(ms_mat$grade)
+qqnorm(ms_por$grade, pch = 1, frame = FALSE, main = "MS school Portuguese")
+qqline(ms_por$grade)
+
+```
+
+```{r, colapse=TRUE}
+lillie.test(gp_mat$grade)["p.value"]
+ks.test(gp_mat$grade, "pnorm", mean(gp_mat$grade), sd(gp_mat$grade))["p.value"]
+
+
+lillie.test(gp_por$grade)["p.value"]
+ks.test(gp_por$grade, "pnorm", mean(gp_por$grade), sd(gp_por$grade))["p.value"]
+
+
+lillie.test(ms_mat$grade)["p.value"]
+ks.test(ms_mat$grade, "pnorm", mean(ms_mat$grade), sd(ms_mat$grade))["p.value"]
+
+
+lillie.test(ms_por$grade)["p.value"]
+ks.test(ms_por$grade, "pnorm", mean(ms_por$grade), sd(ms_por$grade))["p.value"]
+```
+Tails are emphasized on the left side of the distribution, which is why the `p` value will almost always be less than 0.05 for the Kolmogovor-Smirnov and Lilliefors' test. 
+
+Visually we can see that data comes from the normal distribution but with a strong remark that the left tail is often present. Although normality is assumed, tests sensitive to normality won't be taken into account.
+
+## F-test of equality of variances
+
+It's important to emphasize that the F-test of equality of variances is extremely sensitive to normality. The test will be conducted, but its results and conclusions will be discarded. Why? Because the distribution of datasets can't be considered normal in this case (because of left tails).
+
+$p\ -$ the probability that under the null hypothesis of obtaining the value (of the test statistic) that's as extreme (or more extreme) than the value we got computed from the sample we have
+
+If $p < \alpha$ hypothesis $H0$ is rejected in favor of hypothesis $H1$ 
+* falls under right tail => rejection
+
+$$H_{0}: \sigma_{1}^{2}=\sigma_{2}^{2}$$
+$$H_{1}: \neg H_{0}$$
+
+Order of arguments for the `var.test` function doesn't matter. However, in practice, the numerator has the higher value than the denominator:
+$$\frac{\sigma_{1}^2}{\sigma_{2}^2},\quad\sigma_{1}^2 > \sigma_{2}^2$$
+
+
+```{r, colapse=TRUE, echo=FALSE}
+# This part won't be outputed as code in PDF
+cat_reject_h0 <- function(prefix_message, is_h0_rejected) {
+  cat(prefix_message, "\n")
+  if (is_h0_rejected) cat("\tWe reject the H0 hypothesis in favor of the H1 hypothesis\n") else cat("\tWe do not reject the H0 hypothesis\n")
+}
+```
+
+```{r, colapse=TRUE}
+cat("Mathematics variances", var(gp_mat$grade), var(ms_mat$grade))
+cat("Portugeuse variances", var(gp_por$grade), var(ms_por$grade))
+```
+
+Intuitively, it's assumed that the H0 hypothesis for Portuguese will be rejected because the variances are significantly different from each other. Of course, the F-test of equality of variances will be conducted to assure the statistical significance of the difference between two variances.
+
+Construction of the test:
+```{r, colapse=TRUE, results='hide'}
+alpha <- 0.05
+
+# H0 - Variance of GP_MAT and MS_MAT are equal
+# H1 - not H0
+mat_f_test <- var.test(gp_mat$grade, ms_mat$grade, alternative = "two.sided")
+mat_f_test["p.value"]
+
+# H0 - Variance of GP_POR and MS_MAT are equal
+# H1 - not H0
+por_f_test <- var.test(gp_por$grade, ms_por$grade, alternative = "two.sided")
+por_f_test["p.value"]
+```
+
+```{r, colapse=TRUE}
+var_equal_mat <- if (mat_f_test$p.value < alpha) FALSE else TRUE
+cat_reject_h0("Mathematics - F-test of equality of variances:", !var_equal_mat)
+
+var_equal_por <- if (por_f_test$p.value < alpha) FALSE else TRUE
+cat_reject_h0("Portuguese - F-test of equality of variances:", !var_equal_por)
+```
+
+
+## Unpaired two sample T-test test of equality of means
+
+Because the `n` is bigger than 30 for both datasets and it is true that the t-test is robust to (non)normality, an unpaired two-sample test of equal means is conducted for both subjects.
+
+With previously calculated means, the one-sided alternative hypothesis is chosen (an alternative that school `GP` has a higher mean) 
+
+Again, because of the F-test's sensitivity to normality, it's assumed that variances are unequal for the t-test.
+
+```{r, collapse=TRUE}
+
+# H0 - GP school has equal grades to in mathematics to MS (GP=MS)
+# H1 - GP>MS
+mat_t_test <- t.test(gp_mat$grade, ms_mat$grade, alt = "greater", var.equal = FALSE)
+is_gp_mat_better <- if (mat_t_test$p.value < alpha) TRUE else FALSE
+cat_reject_h0("Mathematics - t-test:", is_gp_mat_better)
+
+# H0 - GP school has equal grades to in Portuguese to MS (GP=MS)
+# H1 - GP>MS
+por_t_test <- t.test(gp_por$grade, ms_por$grade, alt = "greater", var.equal = FALSE)
+is_gp_por_better <- if (por_t_test$p.value < alpha) TRUE else FALSE
+cat_reject_h0("Portugueuse - t-test:", is_gp_por_better)
+```
+
+Mathematics - The H0 hypothesis is not rejected. It can't be stated that school GP has better math grades than school MS
+
+Portuguese - The H0 hypothesis in favor of the H1 hypothesis from which it's concluded that school `GP` has better grades in Portuguese than school `MS`.
+
+# Test case: Are students more successful in mathematics or Portuguese?
+author: Tomislav Prhat - advised by the rest of the group
+
+```{r}
+students_org  %>% summarise(
+          Mean.G3_mat = mean(G3_mat),
+          Mean.G3_por = mean(G3_por),
+            ) -> summary.result1
+summary.result1
+
+students_org  %>% summarise(
+          Med.G3_mat = median(G3_mat),
+          Med.G3_por = median(G3_por),
+            ) -> summary.result2
+summary.result2
+
+students_org  %>% summarise(
+          Mean.G3_mat = mean(G3_mat, trim = 0.1),
+          Mean.G3_por = mean(G3_por, trim = 0.1),
+            ) -> summary.result3
+summary.result3
+
+(1 - summary.result3/summary.result1)*100
+
+```
+
+Portuguese grade's mean, median and trimmed mean (10%) is higher than mathemathic's
+
+```{r, echo=FALSE,eval=FALSE}
+
+students_org  %>% summarise(
+          IQR.G3_mat = IQR(G3_mat),
+          IQR.G3_por = IQR(G3_por),
+            ) -> summary.result4
+summary.result4
+
+students_org  %>% summarise(
+          Var.G3_mat = var(G3_mat),
+          Var.G3_por = var(G3_por),
+            ) -> summary.result5
+summary.result5
+
+
+students_org  %>% summarise(
+          sd.G3_mat = sd(G3_mat),
+          sd.G3_por = sd(G3_por),
+            ) -> summary.result6
+summary.result6
+
+```
+
+```{r, echo=FALSE}
+boxplot(students_org$G3_mat, students_org$G3_por, 
+        names = c('Mathematics grade','Portugueuse grade'), ylab="Grade")
+```
+
+```{r, echo=FALSE}
+hist(students_org$G3_mat, 
+     breaks=seq(0, 20),
+     main='Mathematics',
+     xlab='Grade')
+```
+
+```{r, echo=FALSE}
+hist(students_org$G3_por, 
+     breaks=seq(0, 20),
+     main='Portuguese',
+     xlab='Grade')
+```
+
+Before the t-test, normality is checked visually and with Kolmogorov-Smirnov's and Lilliefors' tests:
+
+```{r, echo=FALSE}
+qqnorm(students_org$G3_mat, pch = 1, frame = FALSE,main='Mathematics')
+qqline(students_org$G3_mat, col = "steelblue", lwd = 2)
+qqnorm(students_org$G3_por, pch = 1, frame = FALSE,main='Portuguese')
+qqline(students_org$G3_por, col = "steelblue", lwd = 2)
+```
+
+```{r}
+cat("Mathematics p-value (Lillie):", unlist(lillie.test(students_org$G3_mat)["p.value"]))
+cat('Mathematics p-value (KS):', unlist(ks.test(students_org$G3_mat, "pnorm", mean(students_org$G3_mat), sd(students_org$G3_mat))["p.value"]))
+
+cat('Portuguese p-value (Lillie):', unlist(lillie.test(students_org$G3_por)["p.value"]))
+cat('Portuguese p-value (KS):', unlist(ks.test(students_org$G3_por, "pnorm", mean(students_org$G3_por), sd(students_org$G3_por))["p.value"]))
+```
+
+Small p-values are the result of left tails. Visually we can see that data comes from the normal distribution but with a strong remark that the left tail is often present. Although normality is assumed, tests sensitive to normality won't be taken into account.
+
+## F-test of equality of variances
+
+Because of the already mentioned extreme sensitivity to normality, the F-test of equality of variances will be conducted, but its results and conclusions won't be taken into account.
+
+$$H_{0}: \sigma_{1}^{2}=\sigma_{2}^{2}$$
+$$H_{1}: \neg H_{0}$$
+
+```{r}
+var.test(students_org$G3_mat, students_org$G3_por)
+```
+
+Because of the small p-value, the H0 hypothesis is rejected in favor of the H1 hypothesis. Variances are different for each subject. 
+
+## T-test for equality of grade means
+
+For both tests, the alternative case is the higher mean grade is in Portuguese compared to mathematics.
+
+```{r}
+# H0 - Mean grades are the same (Mat=Por)
+# H1 - Por > Mat
+por_mat_t_test <- t.test(students_org$G3_por, students_org$G3_mat, alternative = "greater", var.equal = FALSE)
+
+is_por_higher <- if (por_mat_t_test$p.value < alpha) TRUE else FALSE
+cat_reject_h0("T-test for equality of grade means:", is_por_higher)
+```
+
+
+
+# Test case: How does travel time affect students' success?
+
+ANOVA will be performed to answer this question.
+
+ANOVA's assumptions are:
+* independence of sample cases
+* the population from which samples are drawn should be normally distributed
+* homogeneity of variance (variance among the groups should be approximately equal)
+
+H0 hypothesis - mean value of groups are equal
+$$H_{0}: \mu_{1}=\mu_{2}=\ldots=\mu_{k}$$
+$$H_{1}: \neg H_{0}$$
+
+We can assume independence because the schools are different. 
+
+If the H0 hypothesis we conclude that mean values are unequal. In other words, we conclude that travel time affects the mean of students' grade (success).
+
+## Handling categorical values
+
+Groups are defined by the attribute `traveltime`. It's necessary to transform the values from attribute `traveltime` to categorical continuous data (factors with an order). `traveltime` attribute has 4 possible values which define the travel time from school to students' home:
+* `<` 15min
+* 15 - 30 min
+* 30 - 60 min
+* `>` 60 min
+
+The last category (60min+) will be merged with the second to last category (30-60min) because only 8 data points are contained within the last group (60min+), which is significantly smaller compared to the size of other groups.
+
+```{r, colapse=TRUE}
+count(students, students$traveltime)
+students <- students_clean
+students$traveltime <- factor(students$traveltime, ordered=TRUE, labels=c("0 - 15 min", "15 - 30 min", "> 30 min", "> 30 min"))
+```
+
+Term 'success' (G_total) is defined as sum of `G[1,2,3]_mat` i `G[1,2,3]_por` 
+
+```{r, colapse=TRUE, results='hide'}
+students$G3_total <- students$G3_mat + students$G3_por
+students$G2_total <- students$G2_mat + students$G2_por
+students$G1_total <- students$G1_mat + students$G1_por
+
+students$G_por_total <- students$G1_por + students$G2_por + students$G3_por
+students$G_mat_total <- students$G1_mat + students$G2_mat + students$G3_mat
+
+students$G_total <- students$G1_total + students$G2_total + students$G3_total
+```
+
+ANOVA is robust to slight irregularities in normality. Nonetheless, normality for `G_total` will be tested for the whole dataset and then for each group independently.
+
+```{r, colapse=TRUE, out.width="80%"}
+model = lm(students$G_total ~ students$traveltime)
+
+par(mfrow=c(1,2)) # 2 plots in 1 row
+
+timeperiod = '0 - 15 min'
+data <- rstandard(model)[students$traveltime==timeperiod]
+qqnorm(data, pch = 1, frame = FALSE, main = timeperiod)
+qqline(data)
+hist(data, main = timeperiod)
+lillie.test(data)["p.value"]
+ks.test(data, 'pnorm', mean=mean(data), sd=sd(data))["p.value"]
+
+timeperiod = '15 - 30 min'
+data <- rstandard(model)[students$traveltime==timeperiod]
+qqnorm(data, pch = 1, frame = FALSE, main = timeperiod)
+qqline(data)
+hist(data, main = timeperiod)
+lillie.test(data)["p.value"]
+ks.test(data, 'pnorm', mean=mean(data), sd=sd(data))["p.value"]
+
+timeperiod = "> 30 min"
+data <- rstandard(model)[students$traveltime==timeperiod]
+qqnorm(data, pch = 1, frame = FALSE, main = timeperiod)
+qqline(data)
+hist(data, main = timeperiod)
+lillie.test(data)["p.value"]
+ks.test(data, 'pnorm', mean=mean(data), sd=sd(data))["p.value"]
+```
+On the graph, it's visible that data is normally distributed with a few outliers (left tail). `p` value of the Lilliefors' test sometimes goes below 0.05, however, it's always above 0.05 for the Kolmogorov-Smirnov test.
+
+Lilliefors' test is used if the variance and mean of the population are unknown, which is true for this dataset. It's known that Lilliefors is more conservative compared to the Kolmogorov-Smirnov test, meaning that it's more likely to reject the H0 hypothesis.
+
+Taking everything into account, normality is assumed. Deviations from normality are small and `p` values that are below 0.05 are relatively close to 0.05.
+
+## Bartlett's test of homogeneity of variancies
+
+$$H_{0}: \sigma_{1}^{2}=\sigma_{2}^{2}=\ldots=\sigma_{k}^{2}$$
+$$H_{1}: \neg H_{0}$$
+
+```{r}
+var(students$G_total[students$traveltime=="> 30 min"])
+var(students$G_total[students$traveltime=='15 - 30 min'])
+var(students$G_total[students$traveltime=="> 30 min"])
+bartlett.test(students$G_total ~ students$traveltime)
+```
+
+Values of variances are similar. `p` value of the test is above 0.05 because of which the H0 hypothesis is not rejected. With this, it's confirmed the dataset does not violate ANOVA's assumption for homogeneity of variances.
+
+## Analysis of variance (ANOVA) test of equality of means
+
+$$H_{0}: \mu_{1}=\mu_{2}=\ldots=\mu_{k}$$
+$$H_{1}: \neg H_{0}$$
+
+```{r}
+boxplot(students$G_total ~ students$traveltime)
+```
+
+Visually, we can assume that travel time does affect students' success. However, it's necessary to perform the ANOVA test to confirm if the difference is statistically significant.
+
+```{r}
+model = lm(students$G_total ~ students$traveltime)
+anova(model)
+```
+
+ANOVA suggests that there is a difference between groups `traveltime`. Although the difference isn't enormous, the `p` (between `0.001` and `0.01`) value still suggests statistical significance. The conclusion follows: different `traveltime` groups influence students' success.
+
+# Test case: Which variables best predict students' success?
+author: Magda Radić - advised by the rest of the group
+
+First, categorical data is one-hot-encoded.
+
+```{r, collapse=TRUE, results='hide'}
+require(fastDummies)
+students_org
+students_dummies=dummy_cols(students_org, remove_first_dummy = TRUE, remove_selected_columns = TRUE)
+students_dummies
+
+students_dummies$G_por_total <- students_dummies$G1_por +
+  students_dummies$G2_por +
+  students_dummies$G3_por
+
+students_dummies$G_mat_total <- students_dummies$G1_mat +
+  students_dummies$G2_mat +
+  students_dummies$G3_mat
+
+students_dummies$G_total <- students_dummies$G_por_total +
+  students_dummies$G_mat_total
+
+```
+
+## Coefficient of determination
+
+Coefficient of determination $R^2 \in [0,1]$,  pronounced "R squared", is a statistical measure that represents the proportion of the variance for a dependent variable (`G_total`) that's explained by an independent variable or variables in a regression model.
+
+Individual linear regressions are performed where `G3_mat` and `G3_por` are dependent variables and other variables are regressors. $R^2$ and p-values of the F-tests are saved to an array and will be used later to check which regressors give the minimum $R^2$ value.
+
+```{r, collapse=TRUE}
+filtered_col_names = c()
+r_squares = c()
+ps = c()
+
+for(i in 1:ncol(students_dummies)){
+  
+  col_names=colnames(students_dummies)
+  col_name=col_names[i]
+  
+  if (!startsWith(col_name, "G")){ # skip grades
+    
+    model=lm(students_dummies$G_total ~ students_dummies[[col_name]])
+    
+    summary_model =summary(model)
+    
+    # appending values
+    filtered_col_names <- append(filtered_col_names, col_name)
+    
+    r_squares <- append(r_squares, summary_model$r.squared)
+    ps <- append (ps,  pf(summary_model$fstatistic[1], summary_model$fstatistic[2], summary_model$fstatistic[3], lower.tail=FALSE))
+  }
+}
+
+df_g_squares=data.frame(filtered_col_names, r_squares, ps)
+
+head(df_g_squares, n=3)
+```
+
+## Top predictors for dependent variable `G_total`
+
+A predictor is also referred to as:
+
+* A **regressor**
+* An explanatory variable
+* An independent variable
+* A manipulated variable
+* A feature
+
+Which variables are the best predictors (regressors) for `G_total`? Predictors are sorted by the coefficient of determination $R^2$. Predictor with greatest $R^2$ value are the best predictors. In this case, 10 best predictors are taken into a consideration.
+
+```{R, collapse=TRUE}
+df_top_predictors = df_g_squares[order(-df_g_squares$r_squares[1:10]), ]
+top_10_predictors = as.vector(df_top_predictors$filtered_col_names)
+df_top_predictors
+```
+
+From the top 10 predictors, it might be desirable to ditch predictors which highly correlate with another predictor, as both of them describe similar variability. The decision is performed with a visual and quantitative review of the correlation matrix. If there is any pair of predictors whose absolute correlation value is higher than 0.7, one of the predictors from the pair is ditched. Preferably, it would be a predictor whose sum of absolute correlations coefficients with other predictors is greater.
+
+```{r, collapse=TRUE}
+df_student_success <- students_dummies[,top_10_predictors]
+corrplot(cor(df_student_success), addCoef.col = 'black', number.cex = 0.5)
+```
+
+All predictors are taken into account since there isn't a pair of predictors whose absolute correlation value exceeds `0.7`. 
+
+```{r, collapse=TRUE}
+model_top_pred <- lm(students_dummies$G_total ~ . ,df_student_success)
+summary_top_pred <- summary(model_top_pred) 
+summary_top_pred
+
+ps_top_pred <- summary_top_pred$coefficients[,4]
+ps_top_pred[order(ps_top_pred)]  # $coefficients[,4] -> p-values
+```
+
+The model is simplified so that it doesn't have two (2) regressors whose p-value is the greatest. Regressors with the greatest p-values. A higher p-value indicates a weaker explanation of variance.
+
+```{r, collapse=TRUE}
+top_pred_trim <- top_10_predictors[1 : (length(top_10_predictors) - 2)]
+df_student_success_trim <- df_student_success[,top_pred_trim]
+
+model_top_pred_trim <- lm(students_dummies$G_total ~ . ,df_student_success_trim)
+summary_top_pred_trim <- summary(model_top_pred_trim)
+summary_top_pred_trim
+
+ps_top_pred_trim <- summary_top_pred_trim$coefficients[,4]  # $coefficients[,4] -> p-values
+ps_top_pred_trim[order(ps_top_pred_trim)] 
+```
+
+The $R^2$ is smaller however, the adjusted $R^2$ is larger than the previous model, indicating that unnecessary regressors were discarded. This linear model represents the proportion of the variance (22.25%) for a dependent variable (`G_total`) that's explained by the top 8 variables.
+
+## Normality of residuals
+
+https://analyse-it.com/docs/user-guide/fit-model/linear/residual-normality#:~:text=Normality%20is%20the%20assumption%20that,normally%20distributed%2C%20or%20approximately%20so.&text=If%20the%20test%20p%2Dvalue,not%20from%20a%20normal%20distribution.
+
+> Violation of the normality of residuals assumption only becomes an issue with small sample sizes. For large sample sizes, the assumption is less important due to the central limit theorem, and the fact that the F and t-tests used for hypothesis tests and forming confidence intervals are robust to modest departures from normality.
+
+On graphs, it's visible that residuals are normally distributed.
+
+```{r, collapse=TRUE}
+hist(rstandard(model_top_pred_trim))
+qqnorm(rstandard(model_top_pred_trim))
+ks.test(rstandard(model_top_pred_trim),'pnorm')
+```

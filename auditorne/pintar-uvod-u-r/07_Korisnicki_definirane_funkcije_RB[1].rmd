@@ -1,0 +1,444 @@
+---
+title: "7 Korisnički definirane funkcije"
+author: "Damir Pintar"
+date: "24. kolovoz 2017"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = 'hold')
+```
+
+***
+
+## Definicija funkcije u jeziku R 
+
+U općenitom slučaju, definicija nove funkcije izgleda ovako:
+
+```{r,eval = F}
+ime_funkcije <- function(ulazni argumenti) {
+    tijelo funkcije
+}
+```
+
+Uočimo da kod definicije funkcije koristimo operator `<-`. Ovo nije slučajno - definicija funkcije nije ništa drugo nego stvaranje objekta klase `function` kojeg onda pridružujemo određenoj varijabli; ime varijable zapravo je "naziv" funkcije.
+
+***
+
+## Ulazni i izlazni paramettri
+
+U R-u ne definiramo tipove ulaznih i izlaznih argumenata. Ulazni argumenti imaju ime i opcionalnu nazivnu vrijednost. Funkcija formalno vraća jednu vrijednost, što nije nužno restrikcija ukoliko želimo vratiti više vrijednosti - jednostavno ih enkapsuliramo u obliku vektora ili liste. Ključna riječ `return` je opcionalna - funkcija vraća rezultat zadnjeg izraza u funkciji pa je često dovoljno navesti samo varijablu koja predstavlja povratnu vrijednost kao zadnji red funkcije. 
+
+Konačno, ukoliko želimo povećati robusnost funkcije na način da ćemo odbiti izvođenje logike unutar funkcije ako nisu zadovoljeni određeni uvjeti, za to možemo koristiti funkciju `stopifnot(<logički izraz>)`. Ova funkcija izračunava zadani logički izraz i prekida funkciju ako navedeni uvjet *nije istinit*.
+
+***
+
+## Zadatak 7.1 - prva korisnički definirana funkcija
+
+
+```{r}
+# napišite funkciju `veci` koja prima dva numerička vektora iste duljine 
+# i vraća vektor koji sadrži veći od dva elementa na istim mjestima
+
+# ukoliko jedan ili oba vektora nisu numerički ili nisu iste duljine, 
+# funkcija mora izbaciti grešku
+# u funkciji nemojte koristiti petlje
+veci <- function(a, b) {
+      stopifnot(is.numeric(a) & is.numeric(b), length(a) == length(b))
+      ifelse(a<b, 1, 0)
+}
+
+# pozovite funkciju `veci` nad kombinacijama vektora
+# c(T, F, T) i c(1, 2, 3)
+# c(1, 2, 3, 4) i c(5, 6, 7)
+# c(1, 2, 3) i c(0, 4, 2)
+
+veci (c(1, 1, 3, 4), c(1, 2, 7, 9))
+
+# (preporuka - drugi dio zadatka isprobati direktno u konzoli!)
+
+
+```
+
+***
+
+## Zadatak 7.2 - parametri funkcije
+
+```{r, eval = F}
+ispisiABC <- function(a, b, c) {
+   print(paste("A:", a, "B:", b, "C:", c))   
+}
+
+# razmislite - što ispisuje sljedeći poziv funkcije? 
+ispisiABC(1, a = 2, 3)
+```
+
+***
+
+
+## Raspored ulaznih parametara
+
+U praksi bismo se trebali držati konvencije da prvo koristimo neimenovane parametre, a potom imenovane. Uobičajeno je da postavljamo samo one imenovane parametre čija nazivna vrijednost nam ne odgovara pri čemu strogi raspored nije bitan (iako će praćenje rasporeda zadanog potpisom funkcije povećati čitljivost našeg koda).
+
+Ako želimo napisati funkciju koja prima proizvoljan broj argumenata, koristimo se elementom `...`, tj. trotočkom. Primjer ovakve funkcije jest gore prikazana ugrađena funkcija `paste` koja može primiti proizvoljan broj znakovnih nizova. Ako koristimo trotočku u našoj funkciji, u potpisu ju u pravilu stavljamo na kraj liste argumenata, a unutar same funkcije ju potom jednostavno pretvorimo u listu te potom pristupamo njenim parametrima na način koji nam odgovara.
+
+***
+
+## Zadatak 7.3 - funkcija sa proizvoljnim brojem parametara
+
+```{r}
+ispisiParametre <- function(...) {
+   parametri <- list(...)
+   for (p in parametri) print(p)
+}
+
+# pozovite gornju funkciju sa proizvoljnim parametrima
+ispisiParametre("c", "hehe", "Damir :D")
+
+```
+
+***
+
+## Konstruktur S3 objekta
+
+
+Za kraj, prisjetimo se poglavlja o S3 objektima i činjenici da R nema formalni sustav stvaranja i korištenja objekata, ali da se preporučuje korištenje zasebne konstruktorske funkcije koja zamjenjuje "ručno" slaganje objekta i deklariranje njegove klase. Sada kada znamo stvoriti vlastitu funkciju možemo pogledati kako bi izgledao mogući konstruktor klase `Osoba`.
+
+```{r}
+# konstruktor klase osoba
+
+Osoba <- function(oib, prezime, tezina) {
+
+    stopifnot(is.character(oib))
+    stopifnot(is.character(prezime))
+    stopifnot(is.numeric(tezina) && tezina > 0)
+
+    o <- list(oib = oib, prezime = prezime, tezina = tezina)
+    class(o) <- "Osoba"
+
+    o
+}
+```
+
+Pokušajmo uz pomoć prikazanog konstruktora stvoriti novi objekt klase `Osoba`.
+
+***
+
+## Zadatak 7.4 - konstruktorska funkcija
+
+```{r}
+# stvorite varijablu `ivo` koja će biti klase `Osoba` a koja će imati sljedeće vrijednosti atributa:
+# OIB: 1357135713, prezime: Ivić, tezina: 76
+
+# ispišite varijablu `ivo`
+
+ivo <- Osoba("1357135713", "Ivić", 76)
+ivo
+```
+
+***
+
+Prednost konstruktora je dodatna robustnost u vidu točno definiranih imena atributa ali i mogućnosti ugrađivanja i dodatnih kontrola (npr. `OIB` i `prezime` moraju biti znakovni nizovi dok `tezina` mora biti realni broj i sl.). Ukoliko stvaramo vlastite S3 objekte, preporuka je da za njih definiramo pripadajuće konstruktorske funkcije.
+
+***
+
+## Princip "kopiranja kod izmjene" (copy-on-modify)
+
+Jedno od češćih pitanja koje se postavlja kod učenja novih programskih jezika jest da li funkcije rada na način "poziva preko vrijednosti" (engl. *call-by-value*) ili "poziva preko reference" (engl. *call-by-reference*). Razlika se svodi na sposobnost funkcije da mijenja vrijednosti varijabli koje su poslane na mjestu formalnih argumenata funkcije; kod *call-by-value* principa u funkciju se šalju samo "vrijednosti" parametara, tj. "kopije" originalnih argumenata. S druge strane, kod "*call-by-reference*" principa funkcija prima "reference" originalnih varijabli, tj. ponaša se kao da su originalne varijable proslijeđene funkciji i sve izmjene nad njima odraziti će se u pozivajućem programu.
+
+Jezik R koristi hibridni princip poznat po nazivom "kopiranje kod izmjene" (engl. *copy-on-modify*). Kod ovog principa u funkciju se prosljeđuju reference argumenata, što nam omogućuje da prenosimo i "velike" varijable bez straha da će doći do nepotrebnog kopiranja. No ovo vrijedi samo ukoliko funkcija ne mijenja vrijednost dobivenih varijabli - u trenutku kada funkcija pokuša provesti bilo kakvu izmjenu, provodi se kopiranje varijable i funkcija dalje nastavlja rad na kopiji. Zbog ovoga se kaže da R kao takav ne podržava *call-by-reference* (jedan razlog uvođenja objekata tipa "*reference classes*" tj. RC objekata u jezik R upravo je uvođenje ovog principa).
+
+***
+
+## Pokušaj izmjene varijable iz pozivajuće okoline
+
+```{r}
+# pokušaj izmjene varijable iz pozivajuće okoline
+
+f <- function() {
+    cat("x u funkciji:", x, "\n")
+    x <- x + 1
+    cat("x nakon izmjene:", x, "\n")
+}
+
+x <- 5
+f()
+cat("x nakon povratka:", x, "\n")
+
+```
+
+***
+
+## Zadatak 7.5 - izmjena varijable globalne okoline
+
+```{r}
+# implementirajte funkciju f tako da dohvati referencu na globalnu okolinu 
+# i poveća "vanjski" x za 1
+
+x <- 5
+
+f <- function(x){
+  g <- globalenv()
+  g$x <- g$x + 1
+  
+}
+# pozovite f(x) i ispisite x
+f(x)
+x
+```
+
+***
+
+## Operator `<<-`
+
+Jednostavniji način rješavanja gornjeg zadatka bio bi korištenjem operatora `<<-`. Ovo je tzv. "operator dodjele vanjskom opsegu" (engl. *scoping assignment operator*), a njegova funkcija jest da izmjeni varijablu zadanog imena koja se nalazi 'negdje" na stazi pretrage. R ide sekvencijalno po stazi pretrage i mijenja prvu pojavu navedene varijable. Ukoliko varijabla tog naziva ne postoji nigdje u stazi pretrage, R će stvoriti novu varijablu u prvoj okolini iznad okoline funkcije.
+
+```{r}
+# operator `<<-`
+f <- function(x) {
+  x <<- 7
+  x <- 6
+}
+
+x <- 5
+f()
+x
+```
+
+Ovaj operator je potencijalno nepredvidiv tako da ćemo veću robusnost ipak postići korištenjem funkcije `assign` ili operatora `$` uz referencu na okolinu gdje se nalazi varijabla koju želimo mijenjati.
+
+***
+
+## Lijena evaluacija
+
+Za kraj spomenimo samo jedno svojstvo funkcija u R-u - tzv. "lijena evaluacija" (engl. *lazy evaluation*). Ovo jednostavno znači da R neće evaluirati primljeni parametar sve do trenutka kada ga eksplicitno koristimo. Do tog trenutka taj objekt je tzv. "obećanje" (engl. *promise*) - R "zna" kako evaluirati taj objekt ali to ne radi dok zaista ne treba a do tada imamo samo njegovo obećanje da će to učiniti :) . Na ovaj način povećava se učinkovitost jezika; ako se neki parametar koristi samo u nekoj uvjetnoj grani, onda se u scenarijima kada on nije potreban neće na njega trošiti memorija. No isto tako, moramo biti oprezni jer lijena evaluacija može dovesti do neočekivanih problema ako ne vodimo računa o njenom postojanju.
+
+
+***
+
+## Funkcija kao objekt
+
+Već smo rekli da R ima kvalitetnu podršku za tzv. "funkcionalno programiranje" što predstavlja programsku paradigmu koja naglasak stavlja na dizajniranje funkcija bez oslanjanja na objekte sa izmjenjivim stanjima. Jedna od karakteristika ovakvih jezika su i tzv. "funkcije prve klase" (engl. *first class functions*), što zapravo znači da jezik podržava definiciju funkcija na način da su one ravnopravni objekti svim drugim tipovima objekata - mogu se pohraniti u varijablu, koristiti kao ulazni argument druge funkcije ili kao njezina povratna vrijednost, pohranjivati u druge podatkovne strukture i sl. Iako koncepti funkcionalnog programiranja izlaze iz okvira gradiva kojeg želimo prikazati, činjenicu da R tretira funkcije kao sve druge objekte je vrlo važno znati budući da se ova činjenica iznimno često koristi kod programiranja u jeziku R.
+
+***
+
+## Preimenovanje funkcije
+
+Pokažimo ovo na trivijalnom primjeru. Znamo da R nudi funkciju `sum` unutar paketa `base` koja računa aritmetičku sumu elemenata vektora koje joj proslijedimo. No `sum` je zapravo *ime varijable* koja referencira kod koji implementira dotičnu funkciju. Ukoliko želimo, možemo vrlo lako pridružiti ovu funkciju nekoj drugoj varijabli čime smo joj efektivno "promijenili ime" ili bolje reći dodali alternativni način pozivanja iz potpuno druge okoline.
+
+
+```{r, eval = F}
+zbroji <- sum
+
+zbroji(1:10)  # isto kao sum(1:10)
+
+```
+
+Ovo je najlakše shvatiti na način da je funkcija jednostavno "varijabla koja se može pozvati", pri čemu pod "pozivom" smatramo korištenje sintakse koja uključuje referencu na funkciju i ulazne argumente uokvirene u zagrade, a koja će nakon izvršavanja u R okolini vratiti nekakvu vrijednost.
+
+***
+
+## Funkcija koja vraća funkciju
+
+Funkcija može uredno vraćati i neku drugu funkciju.
+
+```{r}
+stvoriteljFje <- function() {
+    f <- function(x) x + 1
+    return(f)
+}
+
+novaFja <- stvoriteljFje() # dobili smo funkciju "dodavanja jedinice"
+novaFja(5)  
+```
+
+Funkcija je jednostavno stvorila novu funkciju i vratila ju pozivajućem programu kao što bi učinila sa bilo kojim drugim objektom. Povratnu vrijednost spremili smo u varijablu koja je sad "pozivljiva" - ako joj dodamo zagrade i parametre ona će se izvršiti na način na koji je definirana unutar funkcije koja ju je stvorila.
+
+***
+
+## Funkcija koja vraća funkciju (2)
+
+Uočite da smo mogli iskoristiti činjenicu da funkcija vraća rezultat zadnjeg izraza i funkciju definirati i kraće:
+
+```{r}
+#kraća definicija
+stvoriteljFje <- function() {
+    function(x) x + 1
+}
+```
+
+Ovakve funkcije često se zovu i "tvornicama" ili "generatorima" funkcija, a za razliku od gornjeg primjera u praksi generatoru funkcija često šaljemo i neke parametre koji određuju kako će se vraćena funkcija ponašati. 
+
+Pokušajte samostalno napraviti generator funkcija koji vraća funkcije za množenje sa unaprijed postavljenim parametrom.
+
+***
+
+
+## Zadatak 7.6 - generator funkcija
+
+```{r}
+# stvorite funkciju `tvornicaMnozenja` koja stvara funkcije množenja primljenog broja 
+# sa nekom predefiniranom konstantom
+
+# uz pomoć gornje funkcije napravite funkciju `puta2` koja udvostručuje primljeni broj
+
+# pozovite funkciju `puta2` s parametrom 3 i ispišite rezultat
+y <- 5
+
+tvornicaMnozenja <- function(x,y){
+  function(x) x * y
+}
+
+puta2 <- function(y){
+  tvornicaMnozenja(2, y)
+  
+}
+
+puta2(y)
+
+y
+
+
+
+```
+
+***
+
+## Anonimne funkcije
+
+Ako definiramo funkciju, a ne pridružimo ju nekoj varijabli, onda smo stvorili tzv. "anonimnu funkciju".
+
+```{r, eval = F}
+# anonimna funkcija
+function(x) x * x 
+```
+
+***
+
+## Funkcija = "izvršivi" objekt
+
+Za kraj ovog dijela ponovimo najbitnije stvari - u R-u je funkcija objekt kao i svaki drugi, jedina specifičnost jest da se radi o objektu koji je "izvršiv", tj. koji uz korištenje sintakse za poziv funkcije obavlja neki posao i vraća neku vrijednost. Čak i anonimnu funkciju možemo bez problema izvršiti (iako samo jednom, budući da nemamo referencu za njezino ponovno zvanje).
+
+```{r}
+# anonimna funkcija s pozivom
+(function(x) x + 1)(2)
+```
+
+***
+
+## Generičke funkcije
+
+Generičke funkcije već smo spominjali u poglavlju o objektima no svejedno se kratko podsjetimo o čemu se zapravo radi. Programski jezik R svoje objektno orijentirane principe ne temelji na takozvanom "principu razmjene poruka" gdje bi npr. poziv za crtanje grafa mogao izgledati ovako:
+
+```{r, eval = F}
+# uobičajeni OOP princip poziva metode objekta
+graf.crtaj()
+```
+
+
+već ovako:
+
+```{r, eval = F}
+# R-ovski princip poziva metode objekta
+crtaj(graf)
+```
+
+U prvom slučaju graf je objekt koji implementira posebnu metodu za crtanje te koju moramo pozvati kako bi dobili traženu sliku grafa. U drugom postoji "vanjska" funkcija koja "zna" nacrtati graf. Ovu funkciju nazivamo generička funkcija.
+
+***
+
+## Svojstva generičke funkcije
+
+Općenita svojstva generičke funkcije su sljedeća:
+
+* funkcija ima intuitivnu, jasno određenu svrhu
+* očekivani način rada sličan je za više tipova objekata (npr. crtanje će rezultirati slikom)
+* svaki tip objekta zahtjeva vlastitu implementaciju ovisno o karakteristikama objekta (npr. način crtanja kruga se razlikuje se od načina crtanja kvadrata)
+
+***
+
+## Implementacija generičke funkcije
+
+Način implementacije generičkih funkcija (za S3 objekte!) zapravo je iznimno jednostavan, što je vjerojatno i razlog njihove široke prihvaćenosti i velike popularnosti u R zajednici. Postupak se svodi na tri jednostavna koraka:
+
+* izaberemo naziv generičke funkcije (npr. `ispisi`) i deklariramo da se radi o generičkoj funkciji
+    + alternativno, odaberemo neku od postojećih generičkih funkcija
+* stvorimo objekt i deklariramo njegovu klasu (npr. `Osoba`)
+* implementiramo funkciju naziva `ime_gen_fje.ime_klase` (npr. `ispisi.Osoba`)
+
+I to je sve! R ne zahtjeva nikakve dodatne korake, gore navedeno je sasvim dovoljno da R prepoznaje novu generičku funkciju i da ju primjenjuje na sve objekte za čiju klasu je implementirana ta generička funkcija u obliku `ime_gen_fje.ime_klase` (ili `ime_gen_fje.default` za sve klase za koje ne postoji posebna implementacija).
+
+Pokušajmo u sljedećem zadatku implementirati generičku metodu `ispisi` za objekt klase `Osoba`.
+
+***
+
+## Zadatak 7.7 - nova generička funkcija
+
+```{r}
+pero <- Osoba(oib = "12345678", prezime = "Peric", tezina = 78)
+
+# stvaramo novu generičku funkciju `ispisi` uz pomoć funkcije `UseMethod`
+ispisi <- function(x) UseMethod("ispisi")
+
+ispisi.Osoba = function (o) {
+  rez <- paste ("OIB", o.oib, "Prezime:"o.prezime)
+}
+
+# implementirajte funkciju naziva `ispisi.Osoba` koja prima jedan parametar (očekivano klase `Osoba`)
+# te na zaslon ispisuje podatke o osobi na sljedeći način:
+# OIB: <oib>, Prezime: <prezime>, tezina: <tezina>
+# za slaganje ispisa koristite funkciju `paste`
+# a za sam ispis funkciju `cat`
+
+# implementirajte funkciju naziva ispisi.default koja prima jedan parametar
+# i ispisuje ga na zaslon uz pomoć funkcije `cat`
+
+# ispišite varijablu `pero` uz pomoć generičke funkcije `ispisi`
+
+# ispišite vektor c(1, 2, 3, 4, 5) uz pomoć generičke funkcije `ispisi`
+
+```
+
+***
+
+Naravno, nismo morali nužno stvoriti vlastitu funkciju ispisi - vjerojatno bi bolji odabir bio korištenje već postojećih generičkih funkcija kao to su `print` ili `cat`.
+
+***
+
+## Zadatak 7.8 - proširenje postojećih generičkih funkcija
+
+```{r}
+# provjerite da li je print generička funkcija 
+# (jednostavno ispišite njezin izvorni kod navođenjem samog imena funkcije)
+
+# omogućite ispis klase `Osoba` uz pomoć generičke funkcije `print`
+# (možete se poslužiti funkcijom iz prethodnog zadatka)
+print.Osoba <- ispisi.Osoba
+# ispišite varijablu `Pero` uz pomoć generičke funkcije `print`
+print(pero)
+
+```
+
+***
+
+## Ispis implementacija generičke funkcije
+
+
+Za kraj, prikažimo mogućnost R-a da nam izlista sve trenutno poznate implementacije neke generičke funkcije. Za to se jednostavno koristimo funkcijom `methods` kojoj proslijedimo ime dotične funkcije. Istom funkcijom možemo i provjeriti koje sve implementacije generičkih funkcija postoje za određenu klasu. Za to koristimo paramqetar `class` kojem prosljeđujemo naziv klase za koju tražimo spomenute implementacije.
+
+***
+
+## Zadatak 7.9 - funkcija `methods`
+
+```{r}
+# prikažite sve do sad poznate implementacije generičke funkcije `summary`
+methods(summary) 
+# provjerite koje sve implementacije generičkih funkcija postoje za klasu `factor`
+methods(class = "factor")
+
+```
+
+

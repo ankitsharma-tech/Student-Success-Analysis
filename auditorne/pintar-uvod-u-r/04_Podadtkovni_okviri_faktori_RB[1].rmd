@@ -1,0 +1,447 @@
+
+---
+title: "4 Podatkovni okviri i faktori"
+author: "Damir Pintar Šalica"
+date: "24. kolovoz 2017"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = 'hold')
+```
+
+***
+
+## Podatkovni okviri
+
+Kao što je već rečeno, podatkovni okvir je daleko najpopularniji element programskog jezika R. Jezik R predviđen je primarno analizi podataka, a podatkovni okvir zapravo predstavlja **objektnu reprezentaciju podatkovnog skupa** kojeg namjeravamo analizirati. 
+
+
+pbr |	nazivMjesta  |	prosjPlacaKn  |	brojStanovnika 	 |prirez
+----|------------|----------|----------|------
+10000	 |Zagreb |	6359.00	 |790017 |	18
+51000	 |Rijeka |	5418.00	 |128384 |	15
+21000	 |Split	 |5170.00	 |167121 |	10
+31000	 |Osijek |	4892.00	 |84104 |	13
+20000	 |Dubrovnik	 |5348.00	 |28434	 |10
+
+***
+
+
+## Stvaranje podatkovnih okvira
+
+Postoji više načina stvaranja podatkovnih okvira, a mi ćemo prikazati dva u praksi najčešće susretana scenarija:
+
+- programsko stvaranje uz pomoć funkcije `data.frame`
+- učitavanje podataka iz vanjskog izvora uz pomoć funkcije `read.csv`
+
+Prikažimo oba slučaja. Prvo ćemo stvoriti podatkovni okvir programski.
+
+***
+
+## Zadatak 4.1 -  programsko stvaranje podatkovnog okvira
+
+
+```{r}
+mjesto <- data.frame(pbr = c(10000, 51000, 21000, 31000, 2000),
+    nazivMjesta = c("Zagreb", "Rijeka", "Split", "Osijek", "Dubrovnik"),
+    prosjPlacaKn = c(6359., 5418., 5170., 4892., 5348.),
+    brojStanovnika = c(790017, 128384, 167121, 84104, 28434),
+    prirez = c(18, 15, 10, 13, 10))
+
+# ispišite podatkovni okvir `mjesto`
+
+mjesto
+
+```
+
+
+***
+
+## Stvaranje podatkovnog okvira iz CSV datoteke
+
+U nastavku možemo vidjeti primjer CSV datoteke koja odgovara podatkovnom okviru izrađenom u prethodnom primjeru. Pretpostavimo da se datoteka zove `mjesto.csv`. Podaci su odvojeni zarezom (bez razmaknice!), svaka obzervacija u svojem retku, a opcionalni prvi redak predstavlja nazive stupaca. 
+
+
+```{r, eval = F}
+#pbr,nazivMjesta,prosjPlacaKn,brojStanovnika,prirez
+#10000,Zagreb,6359.00,790017,18 
+#51000,Rijeka,5418.00,128384,15
+#21000,Split,5170.00,167121,10
+#31000,Osijek,4892.00,84104,13 
+#20000,Dubrovnik,5348.00,28434,10
+```
+
+
+```{r, eval = F}
+#pbr;nazivMjesta;prosjPlacaKn;brojStanovnika;prirez
+#10000;Zagreb;6359,00;790017;18 
+#51000;Rijeka;5418,00;128384;15
+#21000;Split;5170,00;167121;10
+#31000;Osijek;4892,00;84104;13 
+#20000;Dubrovnik;5348,00;28434;10
+```
+
+***
+
+## Različiti standardi CSV datoteka
+
+Obzirom da je "decimalni zarez" propisani standard i na području Republike Hrvatske, u radu sa CSV datotekama moramo biti oprezni koji od dva standarda zapisa se koristi. Na sreću, jezik R nudi funkcije za podršku oba standarda, tako da ne moramo posebno prilagođavati ulazne datoteke, tek biti oprezni koju funkciju ćemo odabrati.
+
+Pretpostavimo da u radnoj mapi imamo ove dvije datoteke:
+
+- `mjesto.csv`
+- `mjestoAlt.csv`
+
+Ukoliko nemamo dostupne ove datoteke lako ih možemo samostalno napraviti uz pomoć običnog uređivača teksta (npr. *Notepad* ili *gedit*).
+
+
+***
+
+
+## Funkcije `read.csv`, `read.csv2` i `read,table`
+
+Za stvaranje podatkovnih okvira iz CSV datoteka koristimo funkcije:
+- `read.csv` - za "normalne" CSV datoteke sa zarezom kao razdvojnikom
+- `read.csv2` - za alternativni CSV standard koji koristi točku-zarez
+
+
+***
+
+
+## Parametri funkcije `read.csv`
+
+Neke od parametara i pripadajućih vrijednosti funkcija `read.csv` (ili `read.table`) koje je korisno znati su:
+
+- `header = FALSE` - za datoteke bez zaglavlja 
+- `sep = "#"` - za datoteke koje koriste "egzotični" razdvojnik, u ovom slučaju `#`
+- `na.strings = "NULL"` - naznaka koji standard podaci koriste za reprezentaciju nedostajućih vrijednosti a koji će u R-u postati `NA`
+- `nrows = 2000` - maksimalan broj redaka koji će se pročitati, u ovom slučaju 2000
+- `stringsAsFactors = F` - sprječavanje automatskog stvaranja faktorskih stupaca (o kojima ćemo učiti u nastavku ove lekcije)
+- `encoding = "UTF-8"` - za standarde kodiranja teksta koji nisu ASCII (osobito bitno ako radimo sa podacima sa hrvatskog govornog područja koji koriste dijakritičke znakove)
+
+
+***
+
+
+## Zadatak 4.2 -  čitanje podataka iz CSV datoteke
+
+
+```{r}
+# učitajte podatke iz datoteka `mjesto.csv` i `mjestoAlt.csv`
+
+# podatke spremite u okvire `mjesto2` i `mjesto3`
+
+# ispišite okvire `mjesto2` i `mjesto3`
+mjesto2 <- read.csv("mjesto.csv")
+mjesto3 <- read.csv2("mjestoAlt.csv")
+mjesto2
+mjesto3
+```
+
+
+***
+
+
+## Funkcije za rad sa podatkovnim okvirima
+
+Pogledajmo sada neke korisne funkcije za rad sa podatkovnim okvirima tj. tablicama. Dobar dio njih će nam već otprije biti poznat iz iskustva u radu sa listama i matricama:
+
+- `nrow` - broj redaka 
+- `ncol` ili `length` - broj stupaca (budući da se okvir ponaša i kao matrica i kao lista)
+- `dim` - dimenzije tablice
+- `names` - imena stupaca
+- `head` - ispis nekoliko redaka s početka tablice
+- `tail` - ispis nekoliko redaka s kraja tablice
+- `str` - ispis strukture tablice
+- `summary` - sažete statističke informacije  o stupcima tablice
+
+***
+```{r}
+nrow(mjesto2)
+ncol(mjesto2)
+length(mjesto2)
+dim(mjesto2)
+names(mjesto2)
+head(mjesto2)
+tail(mjesto2)
+str(mjesto2)
+summary(mjesto2)
+
+```
+
+
+
+## Zadatak 4.3 -  funkcije za rad sa podatkovnim okvirima
+
+```{r}
+# ispišite dimenzije tablice `mjesto`
+dim(mjesto)
+
+# ispišite strukturu tablice `mjesto`
+str(mjesto)
+
+# ispišite prvih nekoliko redaka tablice `mjesto`
+head(mjesto)
+
+# ispišite sažete statističke informacijeo stupcima tablice `mjesto`
+summary(mjesto)
+```
+
+
+
+***
+
+
+## Odabir redaka i stupaca podatkovnih okvira
+
+Za "rezanje" okvira najčešće koristimo:
+
+- dvodimenzionalno referenciranje uz pomoć indeksnih vektora (matrice!)
+- odabir pojedinog stupca uz pomoć operatora `$`
+=
+
+***
+
+
+## Zadatak 4.4 -  rezanje podatkovnih okvira
+
+```{r}
+# ispišite tablicu `mjesto` (za referencu)
+mjesto
+# ispišite prva tri retka, treći i peti stupac
+mjesto[1:3,c(3,5)]
+# ispišite stupac "prirez"
+mjesto["prirez"]
+# ispišite poštanske brojeve i nazive svih mjesta koja 
+# imaju prirez veći od 12% i broj stanovnika veći od 100,000
+mjesto[mjesto$prirez > 12 & mjesto$brojStanovnika > 100000, c("pbr", "nazivMjesta")]
+
+```
+
+***
+
+## Dodavanje i brisanje redaka i stupaca
+
+Stupce u podatkovni okvir dodajemo na isti način kao što dodajemo elemente liste - uz pažnju da dodani stupac ima isti broj elemenata kao i ostali stupci. 
+
+Novi stupci često su izvedenice postojećih stupaca koje predstavljaju binarne indikatore, rezultate aritmetičkih izraza podataka u drugim stupcima i sl.
+
+***
+
+
+
+## Zadatak 4.5 - dodavanje novih stupaca u tablicu
+
+```{r}
+# tablici `mjesto` dodajte logički stupac `visokPrirez` 
+# koji će pokazivati da li je prirez veći od 12%
+mjesto$visokPrirez <- mjesto$prirez > 12  
+mjesto
+# pretpostavimo sljedeći (fiktivni!) način izračuna prireza
+# - mjesta imaju oko 60% radne populacije
+# - svaki radnik plaća porez koji je otprilike jednak 10% neto plaće 
+# - prirez kojeg radnik plaća računamo kao (stopa prireza)*(iznos poreza)
+#
+# dodajte stupac `mjesecniPrihod` koji će uz pomoć prosječne plaće, prireza 
+# i broja stanovnika procijeniti koliki prihod pojedino mjesto dobija od prireza 
+# (izraženo u milijunima Kn)
+# iznos zaokružite uz pomoć funkcije round ( primjer: round(100.12345, 2) ==>  100.12  )
+
+mjesto$mjesecniPrihod <- round(0.6 * mjesto$brojStanovnika * 0.1 * mjesto$prosjPlacaKn  * 0.01 * mjesto$prirez / 1e6 , 2)
+# ispišite tablicu mjesto
+mjesto
+```
+
+***
+
+## Funkcije `rbind`/`cbind` i podatkovni okviri
+
+Retke i stupce smo također mogli dodati slično dodavanju redaka i stupaca u matricu - uz pomoć funkcija `rbind` i `cbind`. Kod funkcije `rbind` obično dodajemo novi podatkovni okvir sa retcima koji imaju odgovarajući redoslijed i vrstu elemenata, dok kod funkcije `cbind` možemo dodati i obični vektor no moramo paziti da broj elemenata odgovara broju redaka originalnog okvira.
+
+
+***
+
+## Zadatak 4.6 - funkcije `rbind`/`cbind` i podatkovni okviri
+
+```{r}
+df1 <- data.frame(a = c(1,2,3), b = c("A", "B", "C"), c = c(T, F, T))
+df2 <- data.frame(a = 1, b = "A", c = 3)
+df1
+df2
+#spojite df1 i df2 u podatkovni okvir df12 uz pomoć funkcije `rbind`
+df12 <- rbind(df1,df2)
+df12
+# okviru df12 dodajte stupac `imena` sa imenima Ivo, Ana, Pero i Stipe
+# koristite funkciju `cbind`
+df12 <- cbind(df12, imena = c("Ivo", "Ana", "pero", "Stipe"))
+
+# ispišite okvir df12
+df12
+```
+
+
+***
+
+## Brisanje redaka i stupaca
+
+Za *brisanje redaka i stupaca* također se možemo koristiti istim metodama za upravljanje matricama i listama. Konkretno:
+
+- brisanje redaka i stupaca možemo obaviti dvodimenzionalnim referenciranjem redaka i stupaca koje želimo "zadržati"
+- brisanje stupaca možemo obaviti pridjeljivanjem vrijednosti `NULL` odabranom stupcu
+
+
+***
+
+
+## Zadatak 4.7 - brisanje redaka i stupaca
+
+```{r}
+# obrišite prvi redak i drugi stupac iz df12 metodom 2d referenciranja
+df12 <- df12[-1, -2]
+
+# obrišite stupac `imena` uz pomoć pridjeljivanja `NULL` vrijednosti
+df12$imena <- NULL
+
+# ispišite df12
+df12
+```
+
+***
+
+
+## Faktori
+
+**Faktor** u R-u je zapravo tip podataka koji predstavlja ono onoga što se u statistici naziva **nominalnom** ili **kategorijskom** varijablom. 
+
+***
+
+
+## Zadatak 4.8 - faktorizacija znakovnog vektora
+
+```{r}
+tlak <- c("nizak", "visok", "visok", "normalan", "normalan", 
+          "nizak", "visok", "nizak", "normalan", "normalan")
+
+# ispišite varijablu `tlak`
+tlak
+# ispišite klasu varijable `tlak`
+class(tlak)
+# stvorite varijablu `tlak.f` koja će biti faktorizirana
+tlak.f <- NULL
+# inačica varijable `tlak` (funkcija `factor`!)
+tlak.f <- factor(tlak)
+# ispišite varijablu `tlak.f`
+tlak.f
+# ispišite klasu varijable tlak.f
+class(tlak.f)
+```
+
+
+***
+
+
+
+## Zadatak 4.9 - nezastupljene kategorije i parametar 'levels'")`
+
+```{r}
+# dodajte 11. element u vektor `tlak.f` sa sadržajem "prenizak"
+tlak.f[11] <- "prenizak"
+# ispišite `tlak.f`
+tlak.f
+# napravite varijablu `tlak.f2` uz pomoć varijable `tlak`
+# kategorijske razine navedite eksplicitno tako da sadrže
+# i kategorije "prenizak" i "previsok"
+tlak.f2 <- factor(tlak, levels = c("prenizak", "nizak", "normalan", "visok", "previsok"))
+# dodajte 11. element u vektor `tlak.f2` sa sadržajem "prenizak"
+tlak.f2[11] <- "prenizak"
+# ispišite `tlak.f2`
+tlak.f2
+```
+
+***
+
+
+## Zadatak 4.10 - funkcija `table`
+
+Jedno od pitanja koje se često pitamo vezano uz kategorijske varijable jest - kolika je zastupljenost pojedinih kategorija? Odgovor na ovo pitanje daje nam funkcija `table` kojoj prosljeđujemo odabrani faktor.
+
+
+
+```{r}
+# ispišite zastupljenost pojedinih kategorija u faktoru `tlak.f2`
+table(tlak)
+```
+
+***
+
+## Zadatak 4.11 - ordinalni faktori
+
+
+```{r}
+# napravite varijablu `tlak.f3` na isti način kao i `tlak.f2`
+# ali uz dodatni parametar `ordered = TRUE`
+# pripazite da poredak kategorija odgovara ordinalnom rasporedu
+tlak.f3 <- factor(tlak, levels = c("prenizak", "nizak", "normalan", "visok", "previsok"), ordered = T)
+
+# ispišite `tlak.f3`
+tlak.f3
+
+# provjerite radi li se uistinu o ordinalnom faktoru 
+# uz pomoć funkcije `is.ordered
+is.ordered(tlak.f3)
+
+# provjerite da li je tlak prvog pacijentat
+# (okvirno) niži od tlaka trećeg pacijenta
+tlak.f3[1] < tlak.f3[3]
+```
+
+
+***
+
+## Interna struktura faktora 
+
+Implementacijski, faktor je zapravo kodirani ili enumerirani skup vrijednosti inicijalno definiranih znakovnih nizova, uz pridruženu kodnu tablicu istih. Jednostavnije rečeno, faktorizacija znakovnog vektora uključuje:
+
+- "popisivanje" svih uočenih kategorija (ili preuzimanje eksplicitnog popisa iz parametra `levels`)
+- pridjeljivanje numeričkih vrijednosti redom svakoj kategoriji (npr: `"nizak"` -> `1`, `"normalan"` -> `2` itd.)
+- "pakiranje" novostvorenog numeričkog vektora i pripadajuće "kodne tablice"
+
+Iako ove korake R radi automatski, u internu strukturu faktora možemo se uvjeriti ako faktor probamo pretvoriti u čisti numerički, odnosno čisti znakovni tip.
+
+***
+
+## Zadatak 4.12 -interna struktura faktora
+
+
+```{r}
+# ispišite vrijednost varijable tlak.f3 pretvorene u znakovni tip
+as.character(tlak.f3)
+# ispišite vrijednost varijable tlak.f3 pretvorene u numerički tip
+as.numeric(tlak.f3)
+```
+
+
+## Zadatak 4.13 - važnost parametra `stringsAsFactors = F`
+
+
+```{r}
+# uz pomoć funkcije `read.csv` učitajte podatke iz datoteke `mjestoNULL.csv`
+# u varijablu  `mjesto4`
+# nemojte koristiti parametar `stringsAsFactors` niti `na.strings`
+mjesto4 <- read.csv("mjestoNULL.csv")
+# ispišite sadržaj okvira `mjesto4` na zaslon
+mjesto4
+# ispisite stupac `prosjPlacaKn`
+mjesto4$prosjPlacaKn
+# primjenite funkciju `as.numeric` na stupac `prosjPlacaKn` i komentirajte rezultat
+as.numeric(mjesto4$prosjPlacaKn)
+as.character(mjesto4$prosjPlacaKn)
+# primjenite kombinaciju funkcija `as.character` i `as.numeric` na stupac `prosjPlacaKn` 
+as.numeric(as.character(mjesto4$prosjPlacaKn))
+# i komentirajte rezultat
+
+```

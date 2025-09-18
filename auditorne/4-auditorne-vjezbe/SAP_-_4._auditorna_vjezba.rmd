@@ -1,0 +1,340 @@
+---
+title: "SAP -- Četvrta auditorna vježba"
+subtitle: "Case study *Karakteristike klijenata banke*: ANOVA i logistička regresija"
+author: "Tessa Bauman, Stjepan Begušić, David Bojanić, Tomislav Kovačević, Andro Merćep"
+date: "12.1.2022."
+output: pdf_document
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Podatci o potrošačkim kreditima klijenata banke
+
+Dani su podatci o potrošačkim nenamjenskim kreditima jedne banke.
+
+```{r podatci}
+# Ucitavanje podataka
+creditdata = read.csv('creditdata.csv')
+summary(creditdata)
+```
+
+Svaki redak predstavlja kredit za određenog klijenta, uz neke njegove značajke:
+
+- education -- obrazovanje (1 -- osnovna škola, 2 -- srednja škola, 3 -- viša škola ili fakultet)
+- marriage -- bračno stanje (1 -- neudana/neoženjen, 2 -- udana/oženjen)
+- apartment -- vlasništvo stana (1 -- podstanar, 2 -- vlasnik stana)
+- income -- prosječna mjesečna plaća
+- amount -- iznos kredita
+- default -- je li klijent kasnio s plaćanjem kredita (0/1)
+
+```{r ciscenje i priprema}
+# Priprema podataka
+creditdata$education = factor(creditdata$education,levels = c(1,2,3),labels = c('elementary','secondary','university'))
+creditdata$marriage = factor(creditdata$marriage,levels = c(1,2),labels = c('single','married'))
+creditdata$apartment = factor(creditdata$apartment,levels = c(1,2),labels = c('rent','own'))
+creditdata$default = factor(creditdata$default,levels = c(0,1),labels = c(FALSE,TRUE))
+summary(creditdata)
+```
+
+Neka od ključnih pitanja koja zanimaju banke i kreditne institucije su:
+
+- Kako varira plaća u ovisnosti o nekim značajkama klijenata (npr. obrazovanje)?
+- Postoje li interakcijski efekti u više pojedinih značajki klijenata koji određuju visinu plaće?
+- Kako, koristeći dane podatke, najbolje predvidjeti vjerojatnost da će klijent kasniti s otplatom?
+
+# ANOVA
+
+ANOVA (engl. *ANalysis Of VAriance*) je metoda kojom testiramo sredine više populacija. U analizi varijance pretpostavlja se da je ukupna varijabilnost u podatcima posljedica varijabilnosti podataka unutar svakog pojedine grupe (populacije) i varijabilnosti između različitih grupa. Varijabilnost unutar pojedinog uzorka je rezultat slučajnosti, a ako postoje razlike u sredinama populacija, one će biti odražene u varijabilnosti među grupama. Jedan od glavnih ciljeva analize varijance je ustanoviti jesu li upravo te razlike između grupa samo posljedica slučajnosti ili je statistički značajna.
+
+## Jednofaktorska ANOVA
+
+U jednofaktorskom ANOVA modelu razmatra se utjecaj jednog faktora koji ima $k$ razina.
+Neka su:
+$$ \begin{aligned}
+  X_{11}, X_{12}, \ldots, X_{1n_1} & \sim N(\mu_1, \sigma^2) \\
+  X_{21}, X_{22}, \ldots, X_{2n_2} & \sim N(\mu_2, \sigma^2) \\
+  & \vdots\\
+  X_{k1}, X_{k2}, \ldots, X_{kn_k} & \sim N(\mu_k, \sigma^2)
+\end{aligned} $$
+nezavisni uzorci iz $k$ različitih populacija (populacije se razlikuju upravo po razini faktora od interesa). Jednofaktorski ANOVA model glasi:
+$$ X_{ij} = \mu_{j} + \epsilon_{ij}, $$
+gdje je $\mu_{j}$ sredina svake populacije $j = 1,..,k$. Analizom varijance testiramo:
+$$ \begin{aligned}
+  H_0 & : \mu_1 = \mu_2 = \ldots = \mu_k \\
+  H_1 & : \neg H_0.
+\end{aligned} $$
+
+Pretpostavke ANOVA-e su:
+
+- nezavisnost pojedinih podataka u uzorcima,
+- normalna razdioba podataka,
+- homogenost varijanci među populacijama. 
+
+Kad su veličine grupa podjednake, ANOVA je relativno robusna metoda na blaga odstupanja od pretpostavke normalnosti i homogenosti varijanci. Ipak, dobro je provjeriti koliko su ta odstupanja velika. 
+
+Provjera normalnosti može se za svaku pojedinu grupu napraviti KS testom ili Lillieforsovom inačicom KS testa. U ovom slučaju razmatrat ćemo zaposlenje kao varijablu koja određuje grupe (populacije) i plaću kao zavisnu varijablu.
+
+```{r test pretpostavki - normalnost}
+
+require(nortest)
+lillie.test(creditdata$income)
+
+lillie.test(creditdata$income[creditdata$education=='elementary'])
+lillie.test(creditdata$income[creditdata$education=='secondary'])
+lillie.test(creditdata$income[creditdata$education=='university'])
+
+hist(creditdata$income[creditdata$education=='elementary'])
+hist(creditdata$income[creditdata$education=='secondary'])
+hist(creditdata$income[creditdata$education=='university'])
+
+```
+
+Što se tiče homogenosti varijanci različitih populacija, potrebno je testirati:
+$$ \begin{aligned}
+  H_0 & : \sigma_1^2 = \sigma_2^2 = \ldots = \sigma_k^2 \\
+  H_1 & : \neg H_0.
+\end{aligned} $$
+Navedenu hipotezu možemo testirati Bartlettovim testom. Bartlettov test u R-u implementiran je naredbom `bartlett.test()`.
+
+```{r test pretpostavki - homogenost varijanci}
+
+# Testiranje homogenosti varijance uzoraka Bartlettovim testom
+bartlett.test(creditdata$income ~ creditdata$education)
+
+var((creditdata$income[creditdata$education=='elementary']))
+var((creditdata$income[creditdata$education=='secondary']))
+var((creditdata$income[creditdata$education=='university']))
+```
+
+Provjerimo postoje li razlike u prihodima za različite razine školovanja klijenata. 
+
+```{r test razlike u prihodima}
+
+# Graficki prikaz podataka
+boxplot(creditdata$income ~ creditdata$education)
+
+# Test
+a = aov(creditdata$income ~ creditdata$education)
+summary(a)
+
+```
+
+Grafički prikaz sugerira da postoji jasna razlika između grupa, što potvrđuje i ANOVA. Kako bismo procijenili model koji pomoću varijable o školovanju klijenata objašnjava njihov prihod?
+
+```{r linearni model}
+
+# Linearni model
+model = lm(income ~ education, data = creditdata)
+summary(model)
+anova(model)
+
+```
+
+Linearni model koji ima samo kategorijsku varijablu grupe (populacije) kao prediktor istovjetan je ANOVA modelu -- statistički zaključci su u oba slučaja isti.
+
+
+## Dvofaktorska ANOVA
+
+Kod dvofaktorske analize varijance promatra se utjecaj dvaju faktora, pri čemu prvi faktor ima $a$ razina, a drugi faktor $b$ razina. Dakle, promatramo ukupno $a \cdot b$ populacija. Pretpostavimo da iz svake populacije uzimamo nezavisne slučajne uzorke jednake duljine $n$, svaki za obilježje $X$ reprezentirano sa $X_{ij} \sim N(\mu_{ij}, \sigma^2)$ u populaciji $ij$, gdje je $i \in \{1, 2, \ldots, a\}$, a $j \in \{1, 2, \ldots, b\}$.
+
+Potrebno je testirati hipoteze:
+
+- $H_0'$: prvi faktor je beznačajan
+- $H_0''$: drugi faktor je beznačajan
+- $H_0'''$: nema interakcije među faktorima
+
+Sve tri hipoteze testiraju se dvofaktorskim ANOVA testom, koji pretpostavlja model:
+$$ X_{ijk} = \mu_{ij} + \epsilon_{ijk}, $$
+gdje se sredine $\mu_{ij}$ mogu zapisati kao: $\mu_{ij} = \mu + \alpha_i + \beta_j + (\alpha\beta)_{ij}$, koje odgovaraju sredinama prvog faktora $\alpha_i$, drugog faktora $\beta_j$, i interakcije $(\alpha\beta)_{ij}$. U standardnoj proceduri će dvofaktorski ANOVA test imati iste pretpostavke kao jednofaktorski, uz zahtjev na jednake veličine uzoraka pojedinih grupa (populacija). To u praksi najčešće nije slučaj, pa se koriste verzije s otežanim srednjim vrijednostima -- u R-u je upravo takav pristup defaultni u funkciji `aov()`.
+
+```{r dvofaktorska anova - graficka provjera i provjera pretpostavki}
+
+# Graficki prikaz podataka
+boxplot(creditdata$income ~ creditdata$education) 
+boxplot(creditdata$income ~ creditdata$marriage) 
+
+inter = interaction(creditdata$education,creditdata$marriage)
+boxplot(creditdata$income ~ inter,cex.axis=0.5)
+
+# Bartlettov test za jednakost varijanci između pojedinih grupa
+bartlett.test(creditdata$income ~ inter)
+aggregate(creditdata$income, by=list(inter), FUN=var)
+
+```
+
+```{r dvofaktorska anova - test}
+
+# ANOVA test
+a = aov(income ~ education * marriage, data = creditdata)
+summary(a)
+
+```
+
+
+```{r dvofaktorska anova - linearni model}
+
+# Linearni model
+model = lm(income ~ education * marriage, data = creditdata)
+summary(model)
+anova(model)
+
+```
+
+Rezultati sugeriraju da interakcije nema, ali da se pojedine populacije (podijeljene po kategorijama edukacije ili braka) razlikuju po srednjim vrijednostima prihoda. Štoviše, iz linearnog modela možemo zaključiti koje pojedine grupe imaju viša očekivanja.
+
+
+# Logistička regresija
+Kad bismo htjeli koristiti postojeće podatke za predvidjeti hoće li koji klijent zakasniti s otplatom kredita, moguće je procijeniti regresijski model s podatcima o klijentima kao nezavisnim varijablama. Zavisna varijabla u tom slučaju nije kontinuirana. Koje su pretpostavke linearne regresije onda (jako) prekršene i ne možemo je koristiti u ovom slučaju?
+
+Imamo na raspolaganju skup podataka $D = \{{X_1}, ..., {X_N}\}$ gdje je svaki ${X_i}$ vektor vrijednosti prediktorskih varijabli, one mogu biti diskretne (uz prikladno dummy-kodiranje) ili kontinuirane. Imamo i skup očekivanih izlaza $\{y_1, ..., y_n\}$ gdje je svaki $y_i$ binarna varijabla tj. 0 ili 1. Želimo dobiti kao izlaz modela skup izlaza $\{\hat{y_1}, ..., \hat{y_N}\}$. Idealno bismo od dobrog modela očekivali da bude (što je češće moguće) $\hat{y_i} = y_i$, tj. da radi dobre predikcije. Također, želimo imati vjerojatnost $P(\hat{Y_i} = 1 | {x_i})$ koja bi nam dala mjeru koliko je model "siguran" u svoju odluku i omogućavala da izračunamo predikcije na sljedeći način
+$$ \hat{y_i} = 
+\begin{cases}
+    1 & \text{ako } P(\hat{Y_i} = 1 | \vec{x_i})\geq 0.5\\
+    0,              & \text{inače}
+\end{cases} $$
+
+
+Glavni problem zbog kojeg ne možemo koristiti linearnu regresiju za ovaj zadatak je što ${\beta}^T{X}$ može poprimiti vrijednosti van intervala $[0, 1]$ pa izlaz linearne regresije ne možemo interpretirati kao vjerojatnost. 
+
+Logistička regresija rješava taj problem tako što transformira ${\beta}^T{X}$ koristeći logističku (sigmoidalnu) funkciju:
+$$ \sigma(\alpha) =  \frac{1}{1 + e^{-\alpha}} $$
+Koja je prikazana na sljedećem grafu:
+```{r}
+sigmoid = function(x) {
+   1 / (1 + exp(-x))
+}
+
+x <- seq(-5, 5, 0.01)
+
+plot(x,sigmoid(x))
+```
+
+Postoji više razloga zašto koristimo baš ovu funkciju:
+
+1. Ona ima upravo željeno djelovanje -- ograničava izlaz linearnog modela između 0 i 1
+2. Ima svojstvo da je njena derivacija $\sigma'(\alpha) = \sigma(\alpha)(1 - \sigma(\alpha))$ što olakšava implementaciju algoritma učenja.
+3. Omogućuje lakše interpretiranje koeficijenata $\beta$ ovog modela (više o ovom kasnije).
+
+Model dakle prikazuje gore traženu vjerojatnost na sljedeći način:
+$$ P(\hat{Y_i} = 1 | {X_i}) =  \frac{1}{1 + e^{-{\beta}^T{X_i}}} $$
+
+Uz to što za svaki $x_i$ možemo dobiti vjerojatnost da je pripadni $y_i$ jednak 1, možemo i donijeti binarne odluke na temelju usporedbe dobivene vjerojatnosti s pragom od 0.5 kao što je opisano gore.
+
+## Učenje
+
+Kako bismo naučili dobre vrijednosti za ${\beta}$ koristimo postupak procjene najveće izglednosti (vjerodostojnosti) (engl. *Maximum Likelihood Estimation*). Za neki fiksni vektor težina ${\beta}$ možemo izračunati vjerojatnost koju model daje našem cijelom skupu podataka. Npr. ako je $D = \{{X_1},{X_2},{X_3}\}$ i skup točnih izlaza je ${1,1,0}$ tada je vjerojatnost podataka uz model logističke regresije koji koristi te konkretne težine jednaka
+$$ P(D|{\beta}) = P(Y_1=1|X_1)P(Y_2=1|X_2)(1-P(Y_3=1|X_3). $$
+Ova veličina se još zove izglednost (vjerodostojnost) $L(\vec{\beta})$ parametara uz dane podatke. Da smo uzeli neki drugi skup težina ${\beta'}$, dobili bismo neku drugu vjerodostojnost $L({\beta'})$. Algoritam učenja radi tako pronađe onaj skup težina ${\beta}$ koji maksimizira ovu veličinu. Upravo taj skup težina najbolje opisuje podatke.
+
+
+## Interpretacija i testiranje koeficijenata $\beta$
+Kao kod linearne regresije i ovdje možemo odrediti koje značajke su statistički značajne. U `summary` naredbi modela logističke regresije R će nam također ispisati i devijancu (engl. *deviance*). To je mjera zasnovana na izglednosti i opisuje nam koliko je model dobar, u smislu koliko dobro se prilagodio podacima (veći broj znači da je prilagodba gora). R će nam izbaciti dvije vrste devijance (1) `null deviance` -- koja opisuje model koji ima samo slobodni član i (2) `residual deviance` koja uključuje sve prediktorske varijable. Koristeći te dvije veličine, moguće je i izračunati $R^2$ danog modela kao:
+$$ R^2 = 1 - \frac{D_{mdl}}{D_0}. $$
+
+Važna napomena: ovaj $R^2$ nema istu interpretaciju kao $R^2$ modela linearne regresije:
+
+- nije vezan uz koeficijent korelacije,
+- ne govori o udjelu opisane varijance.
+
+No, može se koristiti kao mjera koja govori koliko je procijenjeni model blizu/daleko od null modela (0-1). 
+
+```{r}
+require(caret)
+
+logreg.mdl = glm(default ~ age + education + marriage + apartment + income + amount, data = creditdata, family = binomial())
+summary(logreg.mdl)
+
+Rsq = 1 - logreg.mdl$deviance/logreg.mdl$null.deviance
+Rsq
+```
+
+Važno je imati na umu da sam omjer oznaka u izlaznoj varijabli može jako utjecati na neke mjere kvalitete modela. Bolju informaciju moguće je dobiti iz tzv. matrice zabune (engl. *confusion matrix*), koja je zapravo kontingencijska matrica oznaka iz podataka i modela. Matrica će biti oblika:
+\begin{center}
+\begin{tabular}{l|c|c}
+      & $\hat{Y}=0$ & $\hat{Y}=1$\\
+\hline
+$Y=0$ & $TN$        & $FP$\\
+\hline
+$Y=1$ & $FN$        & $TP$\\
+\end{tabular}
+\end{center}
+
+Mjere koje mogu biti od interesa su:
+
+- točnost (eng. accuracy): $\dfrac{TP+TN}{TP+FP+TN+FN}$
+- preciznost (eng. precision): $\dfrac{TP}{TP+FP}$ (udio točnih primjera u svim koji su klasificirani kao TRUE)
+- odziv (eng. recall): $\dfrac{TP}{TP+FN}$ (udio točnih primjera u skupu svih koji su stvarno TRUE)
+- specifičnost (eng. specificity): $\dfrac{TN}{TN+FP}$ (udio točnih primjera u svim koji su klasificirani kao FALSE)
+
+Postoje još druge tehnike za ispitivanje kvalitete klasifikacijskih modela, poput F1 ili ROC krivulje, u koje ovaj case study neće ulaziti u detalje, a bit će obrađene se na kasnijim predmetima na diplomskom studiju.
+
+```{r analiza modela}
+
+yHat <- logreg.mdl$fitted.values > 0.4
+tab <- table(creditdata$default, yHat)
+
+tab
+
+
+accuracy = sum(diag(tab)) / sum(tab)
+precision = tab[2,2] / sum(tab[,2])
+recall = tab[2,2] / sum(tab[2,])
+specificity = tab[1,1] / sum(tab[,1])
+
+accuracy
+precision
+recall
+specificity
+
+```
+
+## Test omjera izglednosti (likelihood ratio test)
+
+Pokazuje se da za dva modela logističke regresije $M_1$ sa $N_1$ prediktorskih varijabli i $M_2$ sa $N_2$ prediktorskih varijabli statistika $-2\ln{\dfrac{L_1}{L_2}}$, gdje su $L_1$ i $L_2$ izglednosti za oba modela, ima $\chi^2$ distribuciju s $|N_1 - N_2|$ stupnjeva slobode. Tu statistiku možemo iskoristiti za testiranje postoji li značajna razlika u kvaliteti više alternativnih modela. Ovaj test ima sličnu ulogu kao F-test u slučaju linearne regresije.
+
+Na primjer, možemo testirati postoji li razlika između dva modela -- originalnog modela i modela s dodanim interakcijskim članom. U tom slučaju ćemo prihvatiti prošireni model ako ima značajno manju devijancu, na što će nam odgovor dati test omjera izglednosti.
+
+```{r testiranje modela s dodatnim regresorom}
+
+logreg.mdl = glm(default ~ age + education + marriage + apartment + income + amount, data = creditdata, family = binomial())
+summary(logreg.mdl)
+
+logreg.mdl.2 = glm(default ~ age + education + marriage + apartment + income + amount + I(income/amount), data = creditdata, family = binomial())
+summary(logreg.mdl.2)
+
+anova(logreg.mdl, logreg.mdl.2, test = "LRT")
+```
+
+Također možemo testirati i razliku originalnog modela i smanjenog modela koji ne sadrži neke nesignifikantne regresore. U tom slučaju ćemo prihvatiti smanjeni model ukoliko devijanca nije značajno veća.
+
+```{r testiranje modela s odabirom regresora}
+
+logreg.mdl.3 = glm(default ~ education + marriage + income + amount, data = creditdata, family = binomial())
+summary(logreg.mdl.3)
+
+anova(logreg.mdl, logreg.mdl.3, test = "LRT")
+```
+
+Analiza konačnog modela:
+
+```{r analiza konacnog modela}
+
+yHat <- logreg.mdl.3$fitted.values > 0.5
+tab <- table(creditdata$default, yHat)
+
+tab
+
+
+accuracy = sum(diag(tab)) / sum(tab)
+precision = tab[2,2] / sum(tab[,2])
+recall = tab[2,2] / sum(tab[2,])
+specificity = tab[1,1] / sum(tab[,1])
+
+accuracy
+precision
+recall
+specificity
+
+```

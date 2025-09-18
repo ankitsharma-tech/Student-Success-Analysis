@@ -1,0 +1,393 @@
+
+---
+title: "2 Osnovni tipovi podataka i operatori"
+author: "Damir Pintar"
+date: "23. kolovoz 2017"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = 'hold')
+```
+
+***
+
+## Osnovni tipovi podataka 
+
+R poznaje šest osnovnih tipova podataka:
+
+tip  | izvorni naziv tipa | primjeri
+-----|------|--------------------------
+logički | *logical* |            `TRUE`, `FALSE` ili `T`, `F`
+cjelobrojni | *integer* |       `2L`, `5L`, `123456789L`
+realni | *double* |              `4`, `6`, `3.14`, `2e5`
+kompleksni | *complex* |       `5 + 2i`, `7 + 1i`
+znakovni | *character* |       `"A"`, `"B"`, `"Pero"`, `"ABCDEFGHijklmnoPQRSTUVwyz"`
+bajtovi | *raw* |                `as.raw(2)`, `charToRaw("1")`
+
+***
+
+Provjeru da li je neka varijabla određenog tipa možemo raditi uz pomoć funkcije `is.<naziv_tipa>`. 
+
+
+```{r}
+x <- 5
+is.numeric(x)
+```
+
+
+***
+
+### Zadatak 2.1 - provjera tipova podataka
+
+
+```{r}
+#isprobajte sljedeće naredbe:
+
+is.logical(FALSE)
+is.integer(2L)
+is.double(1.11)
+
+# izvedite sljedeće provjere:
+
+# da li je 5L numerički tip?
+# da li je 3.14 numerički tip?
+# da li je "ABC" znakovni tip?
+# da li je 4 + 2i kompleksni tip?
+# da li je 5 cjelobrojni tip?
+
+```
+
+```{r}
+is.numeric(5L)
+is.numeric(3.14)
+is.character("ABC")
+is.complex(4 + 2i)
+is.numeric(5)
+```
+
+***
+
+
+### Dohvat naziva tipa podatka
+
+
+Tip neke varijable ili konstante možemo dohvatiti uz pomoć funkcija `typeof` ili `class`. Razlika između njih je sljedeća:
+
+- `typeof` - dohvaća "primitivni" ili "osnovni" tip podatka (`integer`, `double` )
+- `class` - "objektni tip", zapravo vrijednost atributa `class` 
+
+
+***
+
+### Zadatak 2.2 - dohvat naziva tipa podatka
+
+
+```{r}
+# ispišite tipove sljedećih konstanti: TRUE, 2L, F, 3.14, "ABC"
+typeof(5L)
+typeof(3.13)
+typeof(2L)
+typeof("ABC")
+# ispišite klase istih konstanti. Ima li razlike?
+class(5L)
+class(3.13)
+class(2L)
+class("ABC")
+```
+
+
+***
+
+## Pretvorba tipova podataka
+
+Podatke možemo eksplicitno pretvarati iz jednog tipa u drugi uz pomoć funkcije `as.<naziv_tipa>`.
+
+```{r}
+x <- as.numeric(TRUE)
+x
+```
+
+***
+
+### Zadatak 2.3 -pretvorba tipova podataka
+ 
+```{r}
+# Izvedite sljedeće pretvorbe i ispišite rezultat
+
+#  2.35 u integer
+#  TRUE u numeric
+#  100L u character
+#  2.35 u character
+#  2e2  u character
+#  0 u logical
+#  2.75  u logical
+as.numeric(2.35)
+as.numeric(TRUE)
+as.character(100L)
+as.character(2.35)
+as.character(2e2)
+as.logical(0)
+as.logical(2.75)
+```
+
+***
+
+## Implicitna pretvorba
+
+*R* će sam provoditi implicitnu pretvorbu ukoliko je moguća
+
+```{r}
+x <- 5 + TRUE
+x
+```
+
+Pripazite! Implicitna pretvorba će se izvesti samo ako je smislen - npr. aritmetički operator između znakovne i numeričke varijable rezultirati će greškom.
+
+***
+
+
+### Zadatak 2.4 - implicitna pretvorba
+
+```{r}
+
+# napišite izraze koji odgovaraju sljedećem i ispišite rezultat:
+
+# aritmetički operator između logičke i numeričke varijable
+TRUE - 1
+TRUE + 1
+# aritmetički operator između cjelobrojne i numeričke varijable
+1 + 1.2
+# logički operator negacije (uskličnik) primjenjen na numeričku varijablu
+!2
+!0
+
+```
+
+
+***
+
+## Operatori
+
+Kao i u drugim programskim jezicima, R dozvoljava korištenje operatora u izrazima. Neki od češće korištenih operatora su:
+
+- *aritmetički*   `+`, `-`, `*`, `/`, `**` (potencija), `%%` (modulo), `%/%` (cjelobrojno dijeljenje)
+- *usporedni*     `<`, `<=`, `>`, `>=`, `==`, `!=`
+- *logički*    `!` (negacija), `&&` (skalarni "i"), `||` (skalarni "ili"), `&` (vektorski "i"), `|` (vektorski "ili")
+- *pridruživanje*     `<-` ili `=`
+
+
+***
+
+
+### Zadatak 2.5 - operatori
+
+```{r}
+# isprobajte izraze `5 / 2` i `5 %/% 2`
+5/2
+5 %/% 2
+# provjerite koliko iznosi "17 na kvadrat" i "ostatak dijeljenja 101 sa 12"
+17^17
+101 %% 12
+# provjerite što je rezultat sljedećih izraza: `17 > 13`, `!TRUE`,  `5 && 0`, `0. || 2`
+17 > 13
+!TRUE
+5 && 0
+0 || 2
+```
+
+
+***
+
+
+## Logičke vrijednosti i uvjetno izvođenje naredbi
+
+Logičke vrijednosti i usporedne operatore najčešće ćemo koristiti kod tzv. "uvjetnog izvođenja naredbi", poznatog iz drugih programskih jezika kao "*IF ELSE*" naredba. U R-u njezina sintaksa izgleda ovako:
+
+`if (izraz) {blok} else {blok}`
+
+Isprobajmo ovu naredbu na sljedećem zadatku.
+
+***
+
+
+### Zadatak 2.6 - uvjetno izvođenje naredbi
+
+```{r}
+# napišite naredbu koja izvodi sljedeće:
+# "ako je 100 paran broj ispiši 'Uspjeh!'"
+if (100%%2 == 0) {
+   print('Uspjeh!')
+}
+```
+
+
+***
+
+
+## "Lijeva strana" operatora pridruživanja (*lvalue*)
+
+Kod pridruživanja pazimo da je s lijeve strane tzv. "lijeva vrijednost" (engl. *lvalue*). Ovo u programerskom smislu interpretiramo kao "nešto u što se može pohraniti izračunata vrijednost". 
+```{r, eval = F}
+x + 1 <- 2          # greška!!!]
+```
+
+***
+
+## Imenovanje varijabli
+
+Imenovanje varijabli uglavnom slijedi pravila iz drugih programskih jezika - dozvoljena su slova, brojke, podcrta ali i točka . Prvi simbol mora biti slovo ili točka.
+
+```{r, eval = F}
+.mojaVarijabla <- 5   #OK
+moja.Varijabla <- 5  #OK
+_mojaVarijabla <- 5  # nije OK
+123Varijabla <- 5  # nije OK
+
+```
+
+U praksi za varijable složenih imena trebamo odabrati jednu od sljedećih konvencija:
+
+```{r, eval = F}
+mojaVarijabla <- 1    # tzv. camelcase
+moja_varijabla <- 2   #  podcrta ili
+moja.varijabla <- 3   # točka
+
+```
+
+
+Bitno je da u programskom kodu ne miješamo konvencije tj. da nakon odabira budemo konzistentni.
+
+
+***
+
+
+### Zadatak 2.7 - ime varijable sa specijalnim znakovima
+
+Ukoliko baš inzistiramo na čudnim imenima koja koriste specijalne znakove, onda ih moramo staviti pod tzv. "lijeve jednostruke apostrofe" (engl. *backticks*):
+
+
+```{r}
+# upišite proizvoljno ime sa specijalnim znakovima unutar lijevih apostrofa 
+# i ispišite vrijednost varijable
+#`` <- 2               
+                      
+```
+
+
+Ovakav način imenovanja varijabli nije previše koristan u praksi, ali ima i svoju svrhu - budući da su operatori u R-u zapravo funkcije (čija su imena doslovno `+`,  `**` i sl.) upotrebom lijevih apostrofa možemo ih direktno referencirati u njihovom originalnom obliku, što se može pokazati vrlo praktičnim kod tzv. funkcijskog programiranja (o čemu ćemo govoriti u jednoj od budućih lekcija).
+
+***
+
+## Varijable i radna okolina
+
+Pridjeljivanje vrijednosti novim nazivima varijabli mi zapravo stvaramo nove varijable u radnoj okolini (koja se u R-u naziva "globalna okolina"). Sve varijable koje smo do sada stvorili možemo vidjeti uz pomoć funkcije `ls()`. Ukoliko želimo obrisati neke varijable, samo navedemo njihova imena u pozivu funkcije `rm()` (npr. `rm(x, y, z)`). Za brisanje *svih* varijabli iz radne okoline koristimo poziv `rm(list=ls())`, s time što tu moramo biti oprezni (nema "*undo*"!).
+
+***
+
+
+### Zadatak 2.8 - ispis i brisanje varijabli globalne okoline
+
+```{r}
+# ispišite sve do sada stvorene varijable globalne okoline
+ls()
+# obrišite neke od gore ispisanih varijabli - npr. rm(x, y, z)
+# ponovo ispišite dostupne varijable
+rm(x)
+ls()
+# obrišite SVE varijable globalne okoline
+# (oprezno s ovim pozivom u praksi!)
+# uvjerite se da je globalna okolina prazna
+rm=(list=ls())
+ls()
+```
+
+
+***
+
+
+## Traženje pomoći
+
+Konačno, kad god nam treba pomoć oko neke funkcije, imamo sljedeće opcije na raspolaganju:
+
+- napišemo samo `<ime_funkcije>` (bez zagrada sa parametrima) i stisnemo *<ENTER>* - ukoliko je funkcija pisana u *R*-u (a nije samo *proxy* prema implementaciji u C-u) na zaslon ćemo dobiti ispis izvornog koda funkcije
+- napišemo `help(<ime_funkcije>)` ili `?<ime_funkcije>` čime dobijamo stranicu pomoći o funkciji sa popisom parametara, primjerima i sl.
+- napišemo `example(<ime_funkcije>)` pri čemu dobijemo popis primjera korištenja funkcije i dobivenih rezultata
+
+
+```{r, eval = F}
+#programski kod funkcije `ls`
+ls
+
+# pomoć za funkciju `ls`
+?ls    # ili help(ls)
+
+# primjeri korištenja funkcije `ls`
+example(ls)
+```
+
+***
+
+## Nedostajuće, nepoznate i nemoguće vrijednosti
+
+U R-u postoji tri načina modeliranja "nepostojećih" vrijednosti:
+
+* `NA` - (*not available*) nedostajuća ili nepoznata vrijednost određenog tipa
+* `NaN` - (*not a number*) "nemogući" broj, npr. `0/0`
+* `NULL` - nepostojeća vrijednost, doslovno "ništa"
+
+***
+
+### Zadatak 2.9 - rad sa NA, NaN i NULL
+
+```{r}
+# Koliko je "5 + nepoznati broj"?
+5 + NaN
+# Koliko je "5 + nepostojeći broj"?   
+5 + NA
+
+# provjerite klase sljedećih konstanti i izraza:
+   #  NA
+   #  aritmetička operacija između numeric i NA
+   #  NaN
+   #  NULL
+class(NaN)
+class(NA)
+class(NA + 5)
+class(NULL)
+
+```
+
+
+***
+
+## Provjera nedostajućih vrijednosti
+
+Provjeru nedostajućih vrijednosti radimo slično provjeri tipova podataka - koristimo funkcije `is.na`, `is.nan` i `is.null`. Moramo voditi računa da je `NaN` zapravo podvrsta od `NA` te da je `NULL` zapravo potpuno zasebna klasa sa specifičnim ponašanjem - pokušaj aritmetičkih ili logičkih operacija nad `NULL` vrijednosti neće rezultirati "novom" nepostojećom vrijednosti već upozorenjima i "praznim" rezultatima. Ovo je posebno bitno napomenuti poznavateljima jezika *SQL* - ono što je `NULL` u SQL-u je `NA` u R-u i to je ono što u pravilu koristimo u praksi, dok `NULL` ima vrlo specifične primjene te ga puno rjeđe koristimo u programskom kodu.
+
+***
+
+### Zadatak 2.10 - provjera nedostajućih vrijednosti
+
+```{r}
+# Što je od idućeg NA?      NA, NaN, NULL, "", 0
+is.na(NA)
+is.na(NaN)
+is.na(NULL)
+is.na("")
+is.na(0)
+# Što je od idućeg NaN?     NA, NaN, NULL
+is.nan(NA)
+is.nan(NaN)
+is.nan(NULL)
+# Što je od idućeg NULL?    NA, NaN, NULL
+is.null(NA)
+is.null(NaN)
+is.null(NULL)
+```
+
+
+

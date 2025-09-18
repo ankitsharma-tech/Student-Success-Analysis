@@ -1,0 +1,304 @@
+
+---
+title: "5 Kontrola toka i objekti"
+author: "Damir Pintar"
+date: "24. kolovoz 2017"
+output:
+  html_document: default
+  
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(results = 'hold')
+```
+
+***
+
+## Naredbe kontrole toka
+
+Pod naredbama kontrole toka smatramo uglavnom konstrukte za uvjetno izvođenje naredbi i/ili tzv. "programske petlje" gdje se segment programa kontinuirano izvodi sve do (opcionalnog) ispunjavana određenih uvjeta koji će rezultirati "izlaskom" iz petlje i nastavljanjem programa.
+
+
+***
+
+## Uvjetno izvođenje naredbi
+
+Uvjetno izvođenje naredbi već smo upoznali. Radi se o konstruktu `if (uvjet) { blok } else { blok }` pri čemu se vitičaste zagrade mogu izbaciti ako imamo samo jednu uvjetnu naredbu. Ovdje je možda zgodno napomenuti kako izbjeći jednu relativno čestu početničku grešku kod pisanja `if` naredbe. Pokušajte ju samostalno uočiti i ispraviti u sljedećem primjeru.
+
+***
+
+## Zadatak 5.1 - naredba `if`
+
+```{r}
+
+# izvršite sljedeću naredbu uvjetnog izvođenja
+if (2 > 1) print("Uspjeh!")
+
+
+# pronađite grešku u sljedećoj `if-else` naredbi i ispravite ju
+if (1 > 2) {print("Uspjeh!")
+}else print("Nuspjeh!")
+
+```
+
+***
+
+## Ternarni operator
+
+Poznavateljima jezika C ili Java biti će poznat pojam tzv. "ternarnog operatora" koji zapravo predstavlja kompaktnu verziju *if-else* bloka:
+
+```{r, eval = F}
+#x = (a < b) ? c : d       # nije primjer iz jezika R!
+```
+
+
+Ulogu ovog operatora u R-u obavlja funkcija `ifelse`.
+
+***
+
+## Zadatak 5.2 -funkcija `ifelse`
+
+```{r}
+a <- 1:3
+b <- c(0, 2, 4)
+
+# kako izgleda vektor `x` nakon izvršavanja sljedeće naredbe?
+# razmislite o odgovoru a potom provjerite ispravnost rješenja
+
+x <- ifelse(a < b, 2, 5)
+x
+
+```
+
+
+***
+
+
+## Programske petlje
+
+U programskom jeziku R imamo tri tipa petlji:
+
+- `repeat` - beskonačna petlja
+- `while` - petlja s provjerom uvjeta na početku
+- `for` - iteratorska petlja ("petlja s poznatim brojem ponavljanja")
+
+***
+
+### Petlja `repeat`
+
+Petlja `repeat` je najjednostavnija petlja. Ona ima sljedeću sintaksu:
+
+`repeat {blok}`
+
+Ovdje se radi o "beskonačnoj" petlji gdje se nakon završetka bloka on ponovo izvršava i tako unedogled. Jedini način izlaska iz ovakve petlje jest korištenje naredbe `break`. Pored ove naredbe imamo i naredbu `next` koja će preskočiti ostatak bloka, ali neće izaći iz petlje već će nastaviti izvršavati blok.
+
+***
+
+### Zadatak 5.3 - petlja `repeat`
+
+
+```{r}
+# prije izvršavanja sljedećeg bloka odgovorite na pitanja:
+# - hoće li se petlja izvršavati beskonačno?
+# - što će se ispisati na zaslonu?
+
+i <- 1
+repeat {
+    i <- i + 1
+    if (i %% 2 == 0) next
+    print(i)
+    if (i > 10) break
+}
+
+
+```
+
+***
+
+### Petlja `while`
+
+Petlja `while` predstavlja "najčišći" oblik programske petlje čija sintaksa doslovno glasi "dok je uvjet ispunjen, ponavljaj navedeni kod":
+
+`while (uvjet) {blok}`
+
+***
+
+
+
+### Zadatak 5.4 - Petlja `while`
+
+
+```{r}
+# dodajte uvjet petlje tako da se ona izvrši
+# točno 7 puta
+
+i <- 1
+
+while(i <= 7) {
+  print(i)
+  i <- i+1
+}
+
+
+```
+
+***
+
+### Petlja `for`
+
+Petlja `for` ili "iteratorska petlja" služi za lako "šetanje" po nekoj programskoj strukturi (najčešće vektoru), uzimajući element po element i nešto radeći s njim. Ona koristi ključnu riječ `for`, ime nove (iteratorske) varijable,  ključnu riječ `in` te vektor čije vrijednosti se uzimaju jedna po jedna i koriste unutar petlje (uočite da navedeni `in` nije isto što i operator `%in%` koji provjerava da li se neki element nalazi u nekom skupu!). Sintaksa ove petlje je sljedeća:
+
+`for (i in v) {radi nešto sa i}`
+
+Uočimo da ovdje varijabla `i` nije "brojač" - u svakoj iteraciji petlje ona postaje vrijednost elementa do kojeg smo došli. Ukoliko baš želimo iterirati po indeksima, a ne po samim elementima, onda možemo koristiti konstrukt `for (i in 1:length(a))`.
+
+
+***
+
+
+### Zadatak 5.5 - petlja `for` 
+
+
+```{r}
+a <- seq(-10, 10, 4)
+
+# ispišite elemente vektora `a` jedan po jedan 
+a
+# uz pomoć petlje `for`
+for(x in a) print(x)
+# pristupajte elementima direktno
+
+# ponovite isto ali iterirajte po indeksima
+for(x in 1:length(a)) print(a[x])
+
+```
+
+
+Uočite da je drugi način bolji ako želite mijenjati elemente vektora ili imati informaciju na kojem mjestu unutar originalnog vektora se trenutno nalazite.
+
+***
+
+
+### Programske petlje i jezik R
+
+Na primjer, sljedeći primjer je sintaksno potpuno ispravan:
+
+```{r}
+# primjer nepotrebnog korištenja petlje
+a <- 1:5
+b <- 6:10
+c <- numeric()
+
+for (i in 1:length(a)) c[i] <- a[i] + b[i]
+```
+
+
+ali vjerojatno radi sporije i puno je nečitljiviji od:
+
+```{r}
+# R-ovska sintaksa
+a <- 1:5
+b <- 6:10
+
+c <- a + b
+c
+```
+
+
+***
+
+### Objekti u R-u
+
+Formalno imamo čak četiri tipa objekata u programskom jeziku R:
+
+- osnovni objekti (*base classes*) - ovo su jednostavno osnovni, "bazični" elementi jezika R
+
+- S3 objekti - princip dizajna objekata preuzet iz jezika S (inačica 3, odakle potiče i ime)
+
+- S4 objekti - formalniji i rigorozniji način stvaranja objekata koji se približava standardnim objektno-orijentiranim mehanizmima iz drugih jezika
+
+- RC objekti (*reference classes*) - najnoviji način stvaranja objekata (uveden u inačici R 2.12) koji u potpunosti replicira "klasične" objektno-orijentirane principe utemeljene na razmjeni poruka
+
+***
+
+
+### S3 objekti
+
+Kao što je već rečeno, S3 objekti zapravo su preneseni iz programskog jezika S i predstavljaju relativno primitivno poimanje koncepta "objekta", barem što se tiče očekivanja glede standardnih metoda stvaranja objekata i pripadajućih metoda. **S3 objekt je zapravo obična lista kojoj smo definirali `class` atribut**.
+
+```{r}
+# stvaramo novi objekt klase `osoba`
+pero <- list(oib = "12345678", prezime = "Peric", tezina = 78)
+class(pero) <- "Osoba"
+```
+
+***
+
+### S3 objektni model i nasljeđivanje
+
+R omogućuje nasljeđivanje, ali također na vrlo neformalan i relativno trivijalan način.
+
+Umjesto da navedemo samo jedan "naziv" klase uz pomoć atributa `class`, mi stvorimo znakovni vektor gdje će prvi element biti naziv klase, a ostali elementi će biti klase roditelji, poredani prema "važnosti".
+
+Na primjer, ako smo stvorili novi objekt `mate` klase `Zaposlenik` nad kojim bi htjeli koristiti iste implementacije određenih generičkih metoda razvijenih za potrebe objekata klase `Osoba`, onda je dovoljno izvesti sljedeće:
+
+
+```{r}
+mate <- list(oib = "12345678", prezime = "Peric", tezina = 78, godZaposlenja = 2001)
+class(mate) <- c("Zaposlenik", "Osoba")
+```
+
+***
+
+###  Generičke funkcije
+
+Gledajući gore definirani način dizajna objekta opravdano je postaviti i dodatno pitanje - a gdje su metode? Kao što znamo, standardni objektno-orijentirani principi pretpostavljaju enkapsulaciju atributa ali i metoda u okvir objekta. Upravo tu leži osnovna razlika između S3 objekta i "standardnih" objekata iz drugih programskih jezika - **kod S3 objekata metode se definiraju izvan objekta u obliku tzv. generičkih funkcija**.
+
+Zašto je tome tako? Ideja jest sljedeća - u radu sa objektima korisnik (programer, analitičar) često poziva iste funkcije (npr. "ispis", "crtanje", "sažeti opis") nad objektima različitog tipa. Funkcija istog imena ali različite implementacije ovisno o objektu nad kojim radi zove se **generička funkcija**. Tako recimo funkcija `print` uvijek rezultira nekakvim ispisom, ali kako će ispis izgledati zapravo ovisi o objektu kojeg ispisujemo.
+
+***
+
+
+### Generičke funkcije (2)
+
+Ovaj način dizajna objekata može djelovati iznimno nekonvencionalno, no činjenica jest da on pozive funkcija čini puno intuitivnijim, pogotovo korisnicima koji nemaju veliko iskustvo sa programiranjem. Konkretno, usporedimo naredbu:
+
+```{r, eval = F}
+pokreni(auto, brzina = 20)
+```
+
+s naredbom:
+
+
+```{r, eval = F}
+auto.pokreni(brzina = 20)
+```
+
+Čitajući prvu naredbu auto doživljavamo kao "objekt" (u smislu službe riječi u rečenicu), tj. nešto radimo "nad" tim objektom. Druga naredba auto postavlja kao subjekt, što je uobičajena praksa u objektno-orijentiranim jezicima ali nije u skladu sa općenitim poimanjem obavljanja radnji nad nekim objektima. 
+
+***
+
+### Implementacija generičke funkcije
+
+U radu s programskim jezikom R često radimo "slične" poslove nad različitim objektima - ispisujemo njihov sadržaj, crtamo ih na grafu, tražimo neke sažete detalje o njima i sl. Upravo zbog toga, a i činjenice da u R-u često radimo interaktivno, R je dizajniran na način da razmišljamo **što** želimo učiniti umjesto da se pitamo **gdje** se nalazi funkcija koju želimo pozvati. Ako želimo ispisati neki objekt, logično je da ga samo proslijedimo funkciji `print`, ako ga želimo nacrtati funkciji `plot`, a ako želimo sažetak funkciji `summary`. 
+
+Kako pojedina funkcija "zna" što učinit sa objektom? Odgovor je jednostavan - generička funkcija je samo "sučelje" prema "pravoj" funkciji koju pozivamo, a logika kako pronaći pravu funkciju je vrlo trivijalna - ako je ime generičke funkcije `genFun` a naziv klase objekta koju joj prosljeđujemo `nazKlase`, funkcija koja se zapravo poziva jest `genFun.nazKlase`. Ako takve funkcije nema, poziva se funkcija `genFun.default`. 
+
+***
+
+
+## Zadatak 5.6 - implementacija generičke funkcije
+
+```{r}
+# ispišite funkciju `summary` (samo naziv funkcije!)
+summary
+# ispišite funkciju koja se zapravo poziva kad pozovete
+# funkciju `summary` nad objektom klase `factor`
+summary.factor
+```
+
+
+***
+
